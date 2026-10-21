@@ -1,0 +1,7 @@
+{
+  "at_risk_customers.json": "9c08c4fdb950a6522fa84227c8cac11b8d46f959d15275ab4ee9dde8faa2bd49",
+  "churn_summary.json": "427779fce744cb0af715dde4dcb4a688ab1a110a6da4f622967f5902fc95abdb",
+  "cohort_retention.json": "1f67a96d572e8cfb4f97fe9f2342fd76a0b17e6be4984e3e0e43d46122e57467",
+  "exclusions_ledger.json": "bd84bd6f0084225d70f7f23c4363bd0cb8690845ada208aae4e70343aef113c3",
+  "health_report.json": "b7900cfa84077efadcbeed646bd2670bd56dbf611d70bae3c6fdad1a5796f90b"
+}

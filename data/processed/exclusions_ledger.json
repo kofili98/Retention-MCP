@@ -1,0 +1,13 @@
+{
+  "exclusions_by_rule": {
+    "1_EXACT_DUPLICATE": 34335,
+    "2_MISSING_CUSTOMER_ID": 235151,
+    "3_CANCELLATION_INVOICE": 18390,
+    "4_NON_PRODUCT_STOCK_CODE": 2858,
+    "5_INVALID_QTY_OR_PRICE": 60
+  },
+  "final_analysis_rows": 776577,
+  "reconciled_exactly": true,
+  "total_excluded_rows": 290794,
+  "total_raw_rows": 1067371
+}

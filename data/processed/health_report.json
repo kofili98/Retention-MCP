@@ -1,0 +1,88 @@
+{
+  "reconciliation": {
+    "exclusions_by_rule": {
+      "1_EXACT_DUPLICATE": 34335,
+      "2_MISSING_CUSTOMER_ID": 235151,
+      "3_CANCELLATION_INVOICE": 18390,
+      "4_NON_PRODUCT_STOCK_CODE": 2858,
+      "5_INVALID_QTY_OR_PRICE": 60
+    },
+    "final_analysis_rows": 776577,
+    "reconciled_exactly": true,
+    "total_excluded_rows": 290794,
+    "total_raw_rows": 1067371
+  },
+  "rules": [
+    {
+      "decision": "EXCLUDE",
+      "description": "Identical transaction lines (including overlapping Dec 2010 sheet boundary rows).",
+      "raw_failing_count": 34335,
+      "rule_id": "RULE_01_EXACT_DUPLICATE",
+      "sample_raw_row_ids": [
+        "0_100050",
+        "0_100100",
+        "0_100101",
+        "0_100157",
+        "0_100320"
+      ],
+      "severity": "WARNING"
+    },
+    {
+      "decision": "EXCLUDE_FROM_COHORTS",
+      "description": "Rows missing Customer ID; cannot be tracked longitudinally across months.",
+      "raw_failing_count": 243007,
+      "rule_id": "RULE_02_MISSING_CUSTOMER_ID",
+      "sample_raw_row_ids": [
+        "0_10000",
+        "0_100000",
+        "0_100001",
+        "0_100002",
+        "0_100003"
+      ],
+      "severity": "HIGH"
+    },
+    {
+      "decision": "EXCLUDE_AS_RETURN",
+      "description": "Invoices prefixed with 'C' indicating order cancellations/returns.",
+      "raw_failing_count": 19494,
+      "rule_id": "RULE_03_CANCELLATION_INVOICE",
+      "sample_raw_row_ids": [
+        "0_100018",
+        "0_100019",
+        "0_100020",
+        "0_100021",
+        "0_100022"
+      ],
+      "severity": "INFO"
+    },
+    {
+      "decision": "EXCLUDE",
+      "description": "Postage, bank charges, manual adjustments, and test stock codes.",
+      "raw_failing_count": 5680,
+      "rule_id": "RULE_04_NON_PRODUCT_CODE",
+      "sample_raw_row_ids": [
+        "0_100111",
+        "0_100453",
+        "0_100778",
+        "0_100856",
+        "0_101102"
+      ],
+      "severity": "WARNING"
+    },
+    {
+      "decision": "EXCLUDE",
+      "description": "Non-cancellation rows with Quantity <= 0 or Price <= 0.",
+      "raw_failing_count": 6207,
+      "rule_id": "RULE_05_NON_POSITIVE_PRICE_OR_QTY",
+      "sample_raw_row_ids": [
+        "0_100243",
+        "0_100244",
+        "0_100245",
+        "0_100246",
+        "0_100247"
+      ],
+      "severity": "WARNING"
+    }
+  ],
+  "status": "HEALTHY"
+}

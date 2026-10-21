@@ -1,0 +1,25 @@
+{
+  "source": "shopify_dev_store_sanitized_fixture",
+  "captured_at": "2026-10-18T14:00:00Z",
+  "subscription_contracts": [
+    {"id": "gid://shopify/SubscriptionContract/1001", "status": "ACTIVE", "nextBillingDate": "2026-11-01T00:00:00Z", "interval": "MONTH", "intervalCount": 1, "lineTotal": 45.00},
+    {"id": "gid://shopify/SubscriptionContract/1002", "status": "ACTIVE", "nextBillingDate": "2026-11-05T00:00:00Z", "interval": "MONTH", "intervalCount": 1, "lineTotal": 45.00},
+    {"id": "gid://shopify/SubscriptionContract/1003", "status": "ACTIVE", "nextBillingDate": "2026-12-15T00:00:00Z", "interval": "MONTH", "intervalCount": 3, "lineTotal": 120.00},
+    {"id": "gid://shopify/SubscriptionContract/1004", "status": "ACTIVE", "nextBillingDate": null, "interval": "MONTH", "intervalCount": 1, "lineTotal": 32.00},
+    {"id": "gid://shopify/SubscriptionContract/1005", "status": "PAUSED", "nextBillingDate": null, "interval": "MONTH", "intervalCount": 1, "lineTotal": 45.00},
+    {"id": "gid://shopify/SubscriptionContract/1006", "status": "PAUSED", "nextBillingDate": null, "interval": "MONTH", "intervalCount": 1, "lineTotal": 60.00},
+    {"id": "gid://shopify/SubscriptionContract/1007", "status": "CANCELLED", "nextBillingDate": null, "interval": "MONTH", "intervalCount": 1, "lineTotal": 45.00},
+    {"id": "gid://shopify/SubscriptionContract/1008", "status": "CANCELLED", "nextBillingDate": null, "interval": "MONTH", "intervalCount": 3, "lineTotal": 120.00}
+  ],
+  "selling_plan_orders": [
+    {"order_id": "gid://shopify/Order/5001", "selling_plan_name": "Deliver every month (10% off)", "contract_id": "gid://shopify/SubscriptionContract/1001"},
+    {"order_id": "gid://shopify/Order/5002", "selling_plan_name": "Deliver every month (10% off)", "contract_id": "gid://shopify/SubscriptionContract/1002"},
+    {"order_id": "gid://shopify/Order/5003", "selling_plan_name": "Quarterly Box (15% off)", "contract_id": "gid://shopify/SubscriptionContract/1003"},
+    {"order_id": "gid://shopify/Order/5004", "selling_plan_name": "Deliver every month (10% off)", "contract_id": "gid://shopify/SubscriptionContract/1004"},
+    {"order_id": "gid://shopify/Order/5005", "selling_plan_name": "Deliver every month (10% off)", "contract_id": "gid://shopify/SubscriptionContract/1005"},
+    {"order_id": "gid://shopify/Order/5006", "selling_plan_name": "Deliver every month (10% off)", "contract_id": "gid://shopify/SubscriptionContract/1006"},
+    {"order_id": "gid://shopify/Order/5007", "selling_plan_name": "Deliver every month (10% off)", "contract_id": "gid://shopify/SubscriptionContract/1007"},
+    {"order_id": "gid://shopify/Order/5008", "selling_plan_name": "Quarterly Box (15% off)", "contract_id": "gid://shopify/SubscriptionContract/1008"},
+    {"order_id": "gid://shopify/Order/5009", "selling_plan_name": "Deliver every month (10% off)", "contract_id": null}
+  ]
+}

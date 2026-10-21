@@ -1,0 +1,10 @@
+duckdb>=1.1.2
+pandas>=2.3.3
+pyarrow>=17.0.0
+openpyxl>=3.1.5
+requests>=2.32.3
+mcp[cli]>=1.2.0
+anthropic>=0.39.0
+pydantic>=2.9.2
+pytest>=8.3.3
+python-dotenv>=1.0.1

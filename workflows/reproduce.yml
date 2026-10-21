@@ -1,0 +1,40 @@
+name: Verify Reproducibility & Invariants (Cross-OS)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  TZ: UTC
+  LC_ALL: C.UTF-8
+  PYTHONHASHSEED: "0"
+
+jobs:
+  reproduce-and-verify:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.15.0
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.15.0"
+
+      - name: Install locked dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install --only-binary=:all: duckdb pandas pyarrow openpyxl requests "mcp[cli]<2" anthropic pydantic pytest python-dotenv
+          pip install --no-build-isolation -e .
+
+      - name: Run full pipeline and verify golden hashes
+        shell: pwsh
+        run: |
+          .\make.ps1 reproduce
+          .\make.ps1 report

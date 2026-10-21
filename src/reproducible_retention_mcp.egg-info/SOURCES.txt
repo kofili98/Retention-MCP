@@ -1,0 +1,15 @@
+README.md
+pyproject.toml
+src/analysis/health.py
+src/analysis/ingest.py
+src/analysis/manifest.py
+src/analysis/metrics.py
+src/reproducible_retention_mcp.egg-info/PKG-INFO
+src/reproducible_retention_mcp.egg-info/SOURCES.txt
+src/reproducible_retention_mcp.egg-info/dependency_links.txt
+src/reproducible_retention_mcp.egg-info/requires.txt
+src/reproducible_retention_mcp.egg-info/top_level.txt
+src/server/mcp_server.py
+src/shopify/client.py
+src/shopify/tools.py
+tests/test_invariants.py

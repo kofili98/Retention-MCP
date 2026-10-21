@@ -1,0 +1,55 @@
+[
+  {
+    "step": 1,
+    "tool_name": "run_data_health_check",
+    "arguments": {},
+    "timestamp_utc": "2026-10-21T18:20:44.773558+00:00"
+  },
+  {
+    "step": 2,
+    "tool_name": "get_run_manifest",
+    "arguments": {},
+    "timestamp_utc": "2026-10-21T18:20:44.773983+00:00"
+  },
+  {
+    "step": 3,
+    "tool_name": "get_churn_summary",
+    "arguments": {
+      "inactivity_days": 90
+    },
+    "timestamp_utc": "2026-10-21T18:20:44.774456+00:00"
+  },
+  {
+    "step": 4,
+    "tool_name": "get_cohort_retention",
+    "arguments": {
+      "cohort_by": "buyer_type",
+      "period_months": 6
+    },
+    "timestamp_utc": "2026-10-21T18:20:44.786745+00:00"
+  },
+  {
+    "step": 5,
+    "tool_name": "get_at_risk_customers",
+    "arguments": {
+      "limit": 10
+    },
+    "timestamp_utc": "2026-10-21T18:20:44.790023+00:00"
+  },
+  {
+    "step": 6,
+    "tool_name": "shopify_subscription_snapshot",
+    "arguments": {
+      "use_fixture": true
+    },
+    "timestamp_utc": "2026-10-21T18:20:44.790836+00:00"
+  },
+  {
+    "step": 7,
+    "tool_name": "shopify_data_health_check",
+    "arguments": {
+      "use_fixture": true
+    },
+    "timestamp_utc": "2026-10-21T18:20:44.791216+00:00"
+  }
+]

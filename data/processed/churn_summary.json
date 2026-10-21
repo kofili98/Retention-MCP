@@ -1,0 +1,71 @@
+{
+  "anchor_date_t_max": "2011-12-09",
+  "bootstrap_seed": 42,
+  "inter_purchase_gap_distribution_days": {
+    "mean": 59.29,
+    "p25": 13,
+    "p50_median": 32,
+    "p75": 70,
+    "p90": 148,
+    "total_observed_gaps": 27026
+  },
+  "metrics_version": "1.0.0",
+  "recommended_threshold_days": 70,
+  "sensitivity_table": [
+    {
+      "active_retained_customers": 2054,
+      "ci_95_lower": 0.613764,
+      "ci_95_upper": 0.639237,
+      "eligible_uncensored_customers": 5498,
+      "inactivity_threshold_days": 60,
+      "inferred_churn_rate": 0.62641,
+      "inferred_churned_customers": 3444,
+      "right_censored_customers": 354,
+      "total_customers": 5852
+    },
+    {
+      "active_retained_customers": 2139,
+      "ci_95_lower": 0.592475,
+      "ci_95_upper": 0.616972,
+      "eligible_uncensored_customers": 5412,
+      "inactivity_threshold_days": 70,
+      "inferred_churn_rate": 0.604767,
+      "inferred_churned_customers": 3273,
+      "right_censored_customers": 440,
+      "total_customers": 5852
+    },
+    {
+      "active_retained_customers": 2289,
+      "ci_95_lower": 0.550409,
+      "ci_95_upper": 0.576674,
+      "eligible_uncensored_customers": 5256,
+      "inactivity_threshold_days": 90,
+      "inferred_churn_rate": 0.564498,
+      "inferred_churned_customers": 2967,
+      "right_censored_customers": 596,
+      "total_customers": 5852
+    },
+    {
+      "active_retained_customers": 2421,
+      "ci_95_lower": 0.516762,
+      "ci_95_upper": 0.545394,
+      "eligible_uncensored_customers": 5156,
+      "inactivity_threshold_days": 120,
+      "inferred_churn_rate": 0.53045,
+      "inferred_churned_customers": 2735,
+      "right_censored_customers": 696,
+      "total_customers": 5852
+    },
+    {
+      "active_retained_customers": 2574,
+      "ci_95_lower": 0.464959,
+      "ci_95_upper": 0.49324,
+      "eligible_uncensored_customers": 4952,
+      "inactivity_threshold_days": 180,
+      "inferred_churn_rate": 0.48021,
+      "inferred_churned_customers": 2378,
+      "right_censored_customers": 900,
+      "total_customers": 5852
+    }
+  ]
+}
