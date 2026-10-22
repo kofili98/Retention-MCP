@@ -48,7 +48,16 @@ class ShopifyDevClient:
             "client_secret": self.client_secret,
             "grant_type": "client_credentials",
         }
-        resp = requests.post(url, json=payload, timeout=15)
+        resp = requests.post(
+            url,
+            data=payload,
+            headers={"Accept": "application/json"},
+            timeout=15,
+        )
+        if not resp.ok:
+            raise RuntimeError(
+                f"Shopify token error ({resp.status_code}): {resp.text}"
+            )
         resp.raise_for_status()
         data = resp.json()
 
@@ -73,3 +82,5 @@ class ShopifyDevClient:
         if "errors" in body:
             raise RuntimeError(f"Shopify GraphQL error: {body['errors']}")
         return body["data"]
+
+

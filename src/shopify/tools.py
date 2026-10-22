@@ -37,13 +37,19 @@ query GetSubscriptionSnapshot {
 }
 """
 
-def _load_payload(use_fixture: bool = True) -> dict:
+def _load_payload(use_fixture: bool = False) -> dict:
     client = ShopifyDevClient()
     if use_fixture or not client.is_configured:
         with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
 
-    data = client.graphql_query(LIVE_SUBSCRIPTION_QUERY)
+    try:
+        data = client.graphql_query(LIVE_SUBSCRIPTION_QUERY)
+    except RuntimeError as e:
+        print(f"[WARNING] Live Shopify query failed ({e}); falling back to fixture.")
+        with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+
     contracts = [
         {
             "id": node["id"],
@@ -69,7 +75,7 @@ def _load_payload(use_fixture: bool = True) -> dict:
         "selling_plan_orders": orders,
     }
 
-def get_shopify_snapshot_data(use_fixture: bool = True) -> dict:
+def get_shopify_snapshot_data(use_fixture: bool = False) -> dict:
     payload = _load_payload(use_fixture=use_fixture)
     contracts = payload["subscription_contracts"]
     status_counts = {}
@@ -89,7 +95,7 @@ def get_shopify_snapshot_data(use_fixture: bool = True) -> dict:
         "selling_plan_orders_count": len(payload["selling_plan_orders"]),
     }
 
-def get_shopify_health_data(use_fixture: bool = True) -> dict:
+def get_shopify_health_data(use_fixture: bool = False) -> dict:
     payload = _load_payload(use_fixture=use_fixture)
     contracts = payload["subscription_contracts"]
     orders = payload["selling_plan_orders"]

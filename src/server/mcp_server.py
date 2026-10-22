@@ -1,4 +1,5 @@
 from pathlib import Path
+from shopify.client import ShopifyDevClient
 import json
 
 try:
@@ -24,6 +25,53 @@ def _read_artifact(filename: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+@mcp.tool()
+def shopify_store_overview(limit: int = 10) -> dict:
+    """
+    Fetches live shop metadata, products, recent orders, and customer counts from the Shopify dev store.
+    - limit: Number of products and recent orders to retrieve (1 to 50).
+    """
+    limit = max(1, min(50, limit))
+    client = ShopifyDevClient()
+    if not client.is_configured:
+        raise RuntimeError("Shopify credentials are not configured in .env")
+
+    query = f"""
+    query StoreOverview {{
+      shop {{
+        name
+        myshopifyDomain
+        currencyCode
+        plan {{
+          displayName
+        }}
+      }}
+      products(first: {limit}) {{
+        nodes {{
+          id
+          title
+          handle
+          status
+          totalInventory
+        }}
+      }}
+      orders(first: {limit}, sortKey: CREATED_AT, reverse: true) {{
+        nodes {{
+          id
+          name
+          createdAt
+          displayFinancialStatus
+          totalPriceSet {{
+            shopMoney {{
+              amount
+              currencyCode
+            }}
+          }}
+        }}
+      }}
+    }}
+    """
+    return client.graphql_query(query)
 
 @mcp.tool()
 def get_cohort_retention(cohort_by: str = "all", period_months: int = 12) -> dict:
@@ -131,7 +179,7 @@ def get_run_manifest() -> dict:
 
 
 @mcp.tool()
-def shopify_subscription_snapshot(use_fixture: bool = True) -> dict:
+def shopify_subscription_snapshot(use_fixture: bool = False) -> dict:
     """
     Returns subscription contract status counts, selling plan intervals, and cancellation reasons
     from the isolated Shopify dev store integration (never merged with the UCI warehouse).
@@ -140,7 +188,7 @@ def shopify_subscription_snapshot(use_fixture: bool = True) -> dict:
 
 
 @mcp.tool()
-def shopify_data_health_check(use_fixture: bool = True) -> dict:
+def shopify_data_health_check(use_fixture: bool = False) -> dict:
     """
     Runs data integrity checks on the Shopify subscription layer: flags subscription orders missing
     a backing contract ID and ACTIVE contracts missing a nextBillingDate.

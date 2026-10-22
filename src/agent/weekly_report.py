@@ -72,8 +72,8 @@ def generate_weekly_report() -> None:
         "get_cohort_retention", tool_log, cohort_by="buyer_type", period_months=6
     )
     at_risk = execute_logged_tool("get_at_risk_customers", tool_log, limit=10)
-    shopify_snap = execute_logged_tool("shopify_subscription_snapshot", tool_log, use_fixture=True)
-    shopify_health = execute_logged_tool("shopify_data_health_check", tool_log, use_fixture=True)
+    shopify_snap = execute_logged_tool("shopify_subscription_snapshot", tool_log, use_fixture=False)
+    shopify_health = execute_logged_tool("shopify_data_health_check", tool_log, use_fixture=False)
 
     # Save deterministic tool call audit log
     with open(TOOL_LOG_PATH, "w", encoding="utf-8") as f:
