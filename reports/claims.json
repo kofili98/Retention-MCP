@@ -1,0 +1,234 @@
+{
+  "claims": [
+    {
+      "claim_id": "C1",
+      "claim_type": "value",
+      "span": "**Status:** `HEALTHY`",
+      "sentence": "- **Status:** `HEALTHY` (Exact Reconciliation: `True`)",
+      "stated_value": "HEALTHY",
+      "paths": [
+        "health.status"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C2",
+      "claim_type": "value",
+      "span": "Exact Reconciliation: `True`",
+      "sentence": "- **Status:** `HEALTHY` (Exact Reconciliation: `True`)",
+      "stated_value": "True",
+      "paths": [
+        "health.reconciliation.reconciled_exactly"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C3",
+      "claim_type": "value",
+      "span": "**Raw Rows:** `1,067,371`",
+      "sentence": "- **Raw Rows:** `1,067,371` | **Excluded Rows:** `290,794` | **Clean Analysis Rows:** `776,577`",
+      "stated_value": "1,067,371",
+      "paths": [
+        "health.reconciliation.total_raw_rows"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C4",
+      "claim_type": "value",
+      "span": "**Excluded Rows:** `290,794`",
+      "sentence": "- **Raw Rows:** `1,067,371` | **Excluded Rows:** `290,794` | **Clean Analysis Rows:** `776,577`",
+      "stated_value": "290,794",
+      "paths": [
+        "health.reconciliation.total_excluded_rows"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C5",
+      "claim_type": "value",
+      "span": "**Clean Analysis Rows:** `776,577`",
+      "sentence": "- **Raw Rows:** `1,067,371` | **Excluded Rows:** `290,794` | **Clean Analysis Rows:** `776,577`",
+      "stated_value": "776,577",
+      "paths": [
+        "health.reconciliation.final_analysis_rows"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C6",
+      "claim_type": "value",
+      "span": "Missing Customer ID (`235,151`)",
+      "sentence": "- **Primary Exclusions:** Missing Customer ID (`235,151`), Exact Duplicates (`34,335`), Cancellations (`18,390`).",
+      "stated_value": "235,151",
+      "paths": [
+        "health.reconciliation.exclusions_by_rule.2_MISSING_CUSTOMER_ID"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C7",
+      "claim_type": "value",
+      "span": "Exact Duplicates (`34,335`)",
+      "sentence": "- **Primary Exclusions:** Missing Customer ID (`235,151`), Exact Duplicates (`34,335`), Cancellations (`18,390`).",
+      "stated_value": "34,335",
+      "paths": [
+        "health.reconciliation.exclusions_by_rule.1_EXACT_DUPLICATE"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C8",
+      "claim_type": "value",
+      "span": "Cancellations (`18,390`)",
+      "sentence": "- **Primary Exclusions:** Missing Customer ID (`235,151`), Exact Duplicates (`34,335`), Cancellations (`18,390`).",
+      "stated_value": "18,390",
+      "paths": [
+        "health.reconciliation.exclusions_by_rule.3_CANCELLATION_INVOICE"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C9",
+      "claim_type": "value",
+      "span": "**90-Day Inferred Churn Rate:** `56.45%`",
+      "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+      "stated_value": "56.45%",
+      "paths": [
+        "churn_summary.selected_threshold_result.inferred_churn_rate"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C10",
+      "claim_type": "value",
+      "span": "95% CI: `[55.04%, 57.67%]`",
+      "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+      "stated_value": "[55.04%, 57.67%]",
+      "paths": [
+        "churn_summary.selected_threshold_result.ci_95_lower",
+        "churn_summary.selected_threshold_result.ci_95_upper"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C11",
+      "claim_type": "value",
+      "span": "across `5,256` uncensored customers",
+      "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+      "stated_value": "5,256",
+      "paths": [
+        "churn_summary.selected_threshold_result.eligible_uncensored_customers"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C12",
+      "claim_type": "value",
+      "span": "(`596` right-censored)",
+      "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+      "stated_value": "596",
+      "paths": [
+        "churn_summary.selected_threshold_result.right_censored_customers"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C13",
+      "claim_type": "value",
+      "span": "Median `32` days",
+      "sentence": "- **Empirical Inter-Purchase Gap:** Median `32` days, 75th percentile `70` days.",
+      "stated_value": "32",
+      "paths": [
+        "churn_summary.inter_purchase_gap_distribution_days.p50_median"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C14",
+      "claim_type": "value",
+      "span": "75th percentile `70` days",
+      "sentence": "- **Empirical Inter-Purchase Gap:** Median `32` days, 75th percentile `70` days.",
+      "stated_value": "70",
+      "paths": [
+        "churn_summary.inter_purchase_gap_distribution_days.p75"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C15",
+      "claim_type": "other",
+      "span": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+      "sentence": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+      "stated_value": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+      "paths": [],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C16",
+      "claim_type": "value",
+      "span": "**At-Risk Population:** `324` repeat customers",
+      "sentence": "- **At-Risk Population:** `324` repeat customers (`>= 3` purchase days) have exceeded their personal median cadence (`> max(1.5x median, median + 14d)`), representing `\u00a31,390,289.84` in historical revenue.",
+      "stated_value": "324",
+      "paths": [
+        "at_risk_summary.total_at_risk_count"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C17",
+      "claim_type": "value",
+      "span": "representing `\u00a31,390,289.84` in historical revenue",
+      "sentence": "- **At-Risk Population:** `324` repeat customers (`>= 3` purchase days) have exceeded their personal median cadence (`> max(1.5x median, median + 14d)`), representing `\u00a31,390,289.84` in historical revenue.",
+      "stated_value": "\u00a31,390,289.84",
+      "paths": [
+        "at_risk_summary.total_at_risk_lifetime_revenue"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C18",
+      "claim_type": "value",
+      "span": "`8` total contracts",
+      "sentence": "- **Contract Snapshot (`shopify_dev_store_sanitized_fixture`):** `8` total contracts (`{'ACTIVE': 4, 'PAUSED': 2, 'CANCELLED': 2}`).",
+      "stated_value": "8",
+      "paths": [
+        "shopify_snapshot.total_contracts"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C19",
+      "claim_type": "value",
+      "span": "**Integrity Checks (`WARNING`):**",
+      "sentence": "- **Integrity Checks (`WARNING`):** Flagged `1` selling-plan order missing a contract ID and `1` ACTIVE contract missing `nextBillingDate`.",
+      "stated_value": "WARNING",
+      "paths": [
+        "shopify_health.status"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C20",
+      "claim_type": "value",
+      "span": "Flagged `1` selling-plan order",
+      "sentence": "- **Integrity Checks (`WARNING`):** Flagged `1` selling-plan order missing a contract ID and `1` ACTIVE contract missing `nextBillingDate`.",
+      "stated_value": "1",
+      "paths": [
+        "shopify_health.checks[0].failing_count"
+      ],
+      "overlaps_claimed": null
+    },
+    {
+      "claim_id": "C21",
+      "claim_type": "value",
+      "span": "and `1` ACTIVE contract missing",
+      "sentence": "- **Integrity Checks (`WARNING`):** Flagged `1` selling-plan order missing a contract ID and `1` ACTIVE contract missing `nextBillingDate`.",
+      "stated_value": "1",
+      "paths": [
+        "shopify_health.checks[1].failing_count"
+      ],
+      "overlaps_claimed": null
+    }
+  ]
+}

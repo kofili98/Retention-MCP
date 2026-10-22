@@ -1,0 +1,122 @@
+Used reproducible-retention integration, loaded tools
+Gate passed (status HEALTHY, reconciled_exactly true). Proceeding with step 2.
+
+Used reproducible-retention integration
+Weekly Reproducible Retention Report
+Week of 22 Oct 2026. UCI figures are anchored to the dataset’s T_MAX of 2011-12-09, so they are identical week to week by design. Only the Shopify section is live.
+
+Pre-flight gate: PASS. The UCI health check status is HEALTHY and reconciled_exactly is true, so the analysis proceeded.
+
+(a) Exclusions ledger and health check
+Raw rows: 1,067,371. Excluded: 290,794 (27.2%). Final analysis rows: 776,577. The ledger reconciles exactly.
+
+Rule (priority order)	Severity	Ledger (waterfall)	Raw failing (independent)	Already removed by earlier rules
+1 Exact duplicate	WARNING	34,335	34,335	0
+2 Missing Customer ID	HIGH	235,151	243,007	7,856
+3 Cancellation invoice (“C”)	INFO	18,390	19,494	1,104
+4 Non-product stock code	WARNING	2,858	5,680	2,822
+5 Qty or price ≤ 0	WARNING	60	6,207	6,147
+The ledger counts each row once, under the first rule it triggers, and the counts sum to 290,794. The raw-failing column tests each rule alone against the raw table, so it overlaps.
+
+Missing Customer ID alone removes 22.0% of raw rows. Everything below therefore describes identified customers only, not guest or anonymous purchases. Cancellations are excluded rather than netted, so revenue figures are not net of returns.
+
+(b) Inferred churn across thresholds (n = 5,852 customers)
+Churn is inferred as no purchase within N days of T_MAX. Customers whose last purchase falls inside the window are right-censored and left out of the denominator.
+
+Inactivity threshold	Churn rate	95% CI	Churned / eligible	Right-censored
+60 days	62.6%	61.4–63.9%	3,444 / 5,498	354
+70 days (empirical p75 gap)	60.5%	59.2–61.7%	3,273 / 5,412	440
+90 days (selected)	56.4%	55.0–57.7%	2,967 / 5,256	596
+120 days	53.0%	51.7–54.5%	2,735 / 5,156	696
+180 days	48.0%	46.5–49.3%	2,378 / 4,952	900
+Definition matters more than sampling error. The point estimates span about 15 points across thresholds, while each CI is under 3 points wide. The CIs capture sampling noise only, not the choice of cutoff.
+Churn is inferred, not observed. Inter-purchase gaps have a median of 32 days, p75 of 70, and p90 of 148. A 90-day cutoff therefore classifies some customers with normally long gaps as churned.
+Censoring grows with the threshold, from 354 customers at 60 days to 900 at 180. Dropping censored customers removes recent, likely-active buyers from the denominator, which may push the rates up. I haven’t verified the direction.
+Seasonality is not modeled. The window covers roughly two years of a gift-oriented retailer, which could affect gap lengths.
+(c) Wholesale_Proxy vs Retail_Proxy, 6-month retention
+Retention here means the share of a cohort that placed an order in the sixth month after acquisition. The sample is 17 cohorts, 2010-01 through 2011-05, excluding the left-censored 2009-12 cohort and the truncated final month.
+
+Segment	Active at month 6 / cohort customers	Weighted	Unweighted cohort mean
+Wholesale_Proxy	512 / 2,026	25.3%	23.4%
+Retail_Proxy	218 / 1,931	11.3%	11.2%
+The weighted gap is about 14 percentage points, roughly 2.2×. A rough normal-approximation 95% CI, which I calculated and which the tool did not return, is about 23.4–27.2% for Wholesale and 9.9–12.7% for Retail. If the truncated cohorts are included, the figures become 30.5% and 11.5%, so the gap is sensitive to cohort inclusion.
+
+Non-causal caveats:
+
+The segment definition is partly circular. Wholesale_Proxy is defined over the full observation window as average invoice revenue ≥ £300 or lifetime quantity ≥ 1,000 units. Lifetime quantity accumulates across repeat orders, so repeat buyers are more likely to be labeled Wholesale_Proxy by construction.
+The labels are proxies, not confirmed account types.
+The metric is “active in month N,” not survival. Retail customers can return after gaps, so the curves are not monotonic.
+The comparison is observational. It says nothing about what would happen if a customer were moved between segments.
+(d) Testable hypothesis: At-Risk cohort
+Cohort: 324 customers (£1,390,289.84 lifetime revenue) with ≥3 purchase days, ≤180 days since last purchase, and overdue beyond max(1.5 × median gap, median gap + 14). The top 10 by revenue are all UK Wholesale_Proxy and hold £335,040.39, about 24% of the cohort total.
+
+Hypothesis: A personalised reorder prompt sent when a customer is flagged at-risk will raise the share who reorder within 30 days, compared with no outreach.
+
+Primary metric: the share of customers placing at least one valid order, under the same exclusion rules, within 30 days of assignment.
+Control: a randomized holdout with no outreach, 1:1 assignment, stratified by lifetime-revenue tercile.
+Secondary metrics: revenue per customer at 30 and 60 days.
+Guardrails: discount cost and opt-out or complaint rate.
+Power: at about 162 per arm, the minimum detectable effect is roughly 15 percentage points absolute at 80% power, assuming a baseline near 40%. That is my approximation, and the true baseline is unknown. This is underpowered for modest lifts, so consider a longer enrollment window.
+Revenue concentration: the top accounts dominate revenue, so report a revenue-weighted result as well. You may also want to handle the very top accounts separately.
+Applicability: the cohort comes from the frozen 2011 snapshot, so the test would apply the same flagging rule to a live customer base.
+(e) Live Shopify subscription health (isolated, not merged with UCI)
+Source: komo-retention.myshopify.com.
+
+Subscription snapshot: 0 contracts, an empty status breakdown, and 0 selling-plan orders.
+Health check: HEALTHY. Orphan selling-plan orders: 0 (HIGH). Active contracts missing a next billing date: 0 (WARNING).
+This is a vacuous pass. With no contracts or orders, the checks have nothing to fail on.
+The reported rates are undefined, not zero. The 0.0 contract churn rate and 0.0 active-plus-paused retention rate come from empty denominators. They are not evidence of no churn or total churn.
+A notice mismatch. The tool’s isolation notice refers to test records demonstrating the integration, but the store returned none.
+Not covered by the manifest. The run manifest hashes only the UCI artifacts, so this live data is not reproducible from it.
+No retention conclusions can be drawn from Shopify until contracts exist.
+
+(f) Run manifest stamp
+json
+{
+  "artifact_sha256_hashes": {
+    "at_risk_customers.json": "9c08c4fdb950a6522fa84227c8cac11b8d46f959d15275ab4ee9dde8faa2bd49",
+    "churn_summary.json": "427779fce744cb0af715dde4dcb4a688ab1a110a6da4f622967f5902fc95abdb",
+    "cohort_retention.json": "1f67a96d572e8cfb4f97fe9f2342fd76a0b17e6be4984e3e0e43d46122e57467",
+    "exclusions_ledger.json": "bd84bd6f0084225d70f7f23c4363bd0cb8690845ada208aae4e70343aef113c3",
+    "health_report.json": "b7900cfa84077efadcbeed646bd2670bd56dbf611d70bae3c6fdad1a5796f90b"
+  },
+  "git_commit": "5d4d7a6e5cafd9ab1e946d842a174d7199561f5e",
+  "metrics_version": "1.0.0",
+  "package_versions": {
+    "anthropic": "2.1.0",
+    "duckdb": "2.0.0",
+    "mcp": "2.3.0",
+    "openpyxl": "3.1.5",
+    "pandas": "3.0.6",
+    "pyarrow": "26.0.0",
+    "pydantic": "2.14.1"
+  },
+  "parameters": {
+    "anchor_date_rule": "MAX(invoice_date)",
+    "at_risk_min_purchase_days": 3,
+    "bootstrap_seed": 42,
+    "sensitivity_thresholds_days": [60, 90, 120, 180]
+  },
+  "python_version": "3.15.0",
+  "raw_xlsx_sha256": "bcbe73b35f5b7babf197fb0cb983a11f5d9ff929078d4aa53d171b1f2df2e980"
+}
+can you pull order information from the shopify dev store?
+
+Shopify store overview
+Yes. The live dev store returned its 10 most recent orders, all created on 21 Oct 2026. This is Shopify data only and stays separate from the UCI warehouse. Amounts are in USD, whereas UCI figures are in GBP.
+
+Order	Created (UTC)	Status	Total
+#1057	10-21 17:55	PAID	$885.95
+#D45	10-21 09:23	AUTHORIZED	$3,354.85
+#D50	10-21 09:23	AUTHORIZED	$49.99
+#D49	10-21 09:23	PAID	$879.93
+#D48	10-21 09:23	AUTHORIZED	$109.99
+#D47	10-21 09:23	AUTHORIZED	$729.95
+#D43	10-21 09:22	AUTHORIZED	$4,604.90
+#D42	10-21 09:22	AUTHORIZED	$3,629.89
+#D46	10-21 09:22	AUTHORIZED	$1,229.95
+#D44	10-21 09:22	AUTHORIZED	$1,485.95
+Totals: the 10 orders sum to $16,961.35. Two are paid ($1,765.88) and eight are authorized but not captured ($15,195.47).
+Likely seeded test data: nine orders have the #D prefix, which usually marks orders created from draft orders, and they were created within about a minute of each other. The store is a “Shopify Plus App Development” plan with Shopify’s sample snowboard catalog.
+Subscriptions: this fits the earlier snapshot showing 0 subscription contracts. The store has a “Selling Plans Ski Wax” product, but this call returns no line items or selling-plan details, so I can’t say whether any of these orders used a selling plan.
+The call also returned 10 products, including one draft and one archived, but no customer counts, although the tool description mentions them. If you want to dig further, I can re-run it with a higher limit (up to 50) or re-check the subscription snapshot and health check against these orders.

@@ -1,0 +1,795 @@
+{
+  "attempt_1": {
+    "passed": false,
+    "summary": {
+      "total_claims": 21,
+      "pass_count": 19,
+      "fail_count": 1,
+      "unverifiable_count": 1,
+      "method_warning_count": 0,
+      "coverage_recall": 1.0,
+      "min_coverage_recall_threshold": 1.0,
+      "max_unverifiable_threshold": 2
+    },
+    "failures": [
+      {
+        "claim_id": "C9",
+        "claim_type": "value",
+        "span": "**90-Day Inferred Churn Rate:** `99.99%`",
+        "sentence": "- **90-Day Inferred Churn Rate:** `99.99%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+        "stated_value": "99.99%",
+        "paths": [
+          "churn_summary.selected_threshold_result.inferred_churn_rate"
+        ],
+        "arithmetic_verdict": "FAIL",
+        "method_findings": [],
+        "verdict": "FAIL",
+        "reason": "Value mismatch: stated 99.99 vs tool 56.4498 (abs error 43.5402 > tol 0.05).",
+        "details": {
+          "verdict": "FAIL",
+          "stated": 99.99,
+          "expected": 56.4498,
+          "abs_error": 43.5402,
+          "tolerance": 0.05,
+          "reason": "Value mismatch: stated 99.99 vs tool 56.4498 (abs error 43.5402 > tol 0.05)."
+        }
+      }
+    ],
+    "uncovered_sentences": []
+  },
+  "revision_triggered": true,
+  "final_passed": true,
+  "attempt_2": {
+    "passed": true,
+    "summary": {
+      "total_claims": 21,
+      "pass_count": 20,
+      "fail_count": 0,
+      "unverifiable_count": 1,
+      "method_warning_count": 0,
+      "coverage_recall": 1.0,
+      "min_coverage_recall_threshold": 1.0,
+      "max_unverifiable_threshold": 2
+    },
+    "failures": [],
+    "uncovered_sentences": []
+  },
+  "final_verification": {
+    "passed": true,
+    "extractor_model": "claude-sonnet-4-5-20250929",
+    "rounding_tolerance_rule": {
+      "description": "Half-ULP rounding tolerance based on stated decimal places (0.5 * 10^-d), with a minimum tolerance of 0.05 percentage points for percentages so a 1-decimal stated percentage like 62.6% matches 62.64% (|62.6 - 62.64| = 0.04 <= 0.05).",
+      "min_percentage_point_tolerance": 0.05,
+      "integer_exact_tolerance": 1e-06,
+      "default_float_tolerance": 0.005
+    },
+    "summary": {
+      "total_claims": 21,
+      "pass_count": 20,
+      "fail_count": 0,
+      "unverifiable_count": 1,
+      "method_warning_count": 0,
+      "coverage_recall": 1.0,
+      "min_coverage_recall_threshold": 1.0,
+      "max_unverifiable_threshold": 2
+    },
+    "coverage": {
+      "total_numeric_or_stat_sentences": 7,
+      "covered_count": 7,
+      "uncovered_count": 0,
+      "recall": 1.0,
+      "uncovered_sentences": [],
+      "passed": true
+    },
+    "failures": [],
+    "unverifiables": [
+      {
+        "claim_id": "C15",
+        "claim_type": "other",
+        "span": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+        "sentence": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+        "stated_value": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+        "paths": [],
+        "arithmetic_verdict": "UNVERIFIABLE",
+        "method_findings": [],
+        "verdict": "UNVERIFIABLE",
+        "reason": "Claim is classified as 'other' (unmapped to a deterministic tool output path).",
+        "details": {
+          "verdict": "UNVERIFIABLE",
+          "reason": "Claim is classified as 'other' (unmapped to a deterministic tool output path)."
+        }
+      }
+    ],
+    "verifications": [
+      {
+        "claim_id": "C1",
+        "claim_type": "value",
+        "span": "**Status:** `HEALTHY`",
+        "sentence": "- **Status:** `HEALTHY` (Exact Reconciliation: `True`)",
+        "stated_value": "HEALTHY",
+        "paths": [
+          "health.status"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Exact status match ('HEALTHY').",
+        "details": {
+          "verdict": "PASS",
+          "stated": "HEALTHY",
+          "expected": "HEALTHY",
+          "reason": "Exact status match ('HEALTHY')."
+        }
+      },
+      {
+        "claim_id": "C2",
+        "claim_type": "value",
+        "span": "Exact Reconciliation: `True`",
+        "sentence": "- **Status:** `HEALTHY` (Exact Reconciliation: `True`)",
+        "stated_value": "True",
+        "paths": [
+          "health.reconciliation.reconciled_exactly"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Exact status match ('True').",
+        "details": {
+          "verdict": "PASS",
+          "stated": "True",
+          "expected": "True",
+          "reason": "Exact status match ('True')."
+        }
+      },
+      {
+        "claim_id": "C3",
+        "claim_type": "value",
+        "span": "**Raw Rows:** `1,067,371`",
+        "sentence": "- **Raw Rows:** `1,067,371` | **Excluded Rows:** `290,794` | **Clean Analysis Rows:** `776,577`",
+        "stated_value": "1,067,371",
+        "paths": [
+          "health.reconciliation.total_raw_rows"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 1067371.0 matched tool 1067371.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 1067371.0,
+          "expected": 1067371.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 1067371.0 matched tool 1067371.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C4",
+        "claim_type": "value",
+        "span": "**Excluded Rows:** `290,794`",
+        "sentence": "- **Raw Rows:** `1,067,371` | **Excluded Rows:** `290,794` | **Clean Analysis Rows:** `776,577`",
+        "stated_value": "290,794",
+        "paths": [
+          "health.reconciliation.total_excluded_rows"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 290794.0 matched tool 290794.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 290794.0,
+          "expected": 290794.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 290794.0 matched tool 290794.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C5",
+        "claim_type": "value",
+        "span": "**Clean Analysis Rows:** `776,577`",
+        "sentence": "- **Raw Rows:** `1,067,371` | **Excluded Rows:** `290,794` | **Clean Analysis Rows:** `776,577`",
+        "stated_value": "776,577",
+        "paths": [
+          "health.reconciliation.final_analysis_rows"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 776577.0 matched tool 776577.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 776577.0,
+          "expected": 776577.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 776577.0 matched tool 776577.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C6",
+        "claim_type": "value",
+        "span": "Missing Customer ID (`235,151`)",
+        "sentence": "- **Primary Exclusions:** Missing Customer ID (`235,151`), Exact Duplicates (`34,335`), Cancellations (`18,390`).",
+        "stated_value": "235,151",
+        "paths": [
+          "health.reconciliation.exclusions_by_rule.2_MISSING_CUSTOMER_ID"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 235151.0 matched tool 235151.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 235151.0,
+          "expected": 235151.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 235151.0 matched tool 235151.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C7",
+        "claim_type": "value",
+        "span": "Exact Duplicates (`34,335`)",
+        "sentence": "- **Primary Exclusions:** Missing Customer ID (`235,151`), Exact Duplicates (`34,335`), Cancellations (`18,390`).",
+        "stated_value": "34,335",
+        "paths": [
+          "health.reconciliation.exclusions_by_rule.1_EXACT_DUPLICATE"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 34335.0 matched tool 34335.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 34335.0,
+          "expected": 34335.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 34335.0 matched tool 34335.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C8",
+        "claim_type": "value",
+        "span": "Cancellations (`18,390`)",
+        "sentence": "- **Primary Exclusions:** Missing Customer ID (`235,151`), Exact Duplicates (`34,335`), Cancellations (`18,390`).",
+        "stated_value": "18,390",
+        "paths": [
+          "health.reconciliation.exclusions_by_rule.3_CANCELLATION_INVOICE"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 18390.0 matched tool 18390.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 18390.0,
+          "expected": 18390.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 18390.0 matched tool 18390.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C9",
+        "claim_type": "value",
+        "span": "**90-Day Inferred Churn Rate:** `56.45%`",
+        "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+        "stated_value": "56.45%",
+        "paths": [
+          "churn_summary.selected_threshold_result.inferred_churn_rate"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 56.45 matched tool 56.4498 within \u00b10.05.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 56.45,
+          "expected": 56.4498,
+          "abs_error": 0.0002,
+          "tolerance": 0.05,
+          "reason": "Stated 56.45 matched tool 56.4498 within \u00b10.05."
+        }
+      },
+      {
+        "claim_id": "C10",
+        "claim_type": "value",
+        "span": "95% CI: `[55.04%, 57.67%]`",
+        "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+        "stated_value": "[55.04%, 57.67%]",
+        "paths": [
+          "churn_summary.selected_threshold_result.ci_95_lower",
+          "churn_summary.selected_threshold_result.ci_95_upper"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Interval [55.04, 57.67] matched [55.0409, 57.6674] within \u00b10.05.",
+        "details": {
+          "verdict": "PASS",
+          "stated": [
+            55.04,
+            57.67
+          ],
+          "expected": [
+            55.0409,
+            57.6674
+          ],
+          "max_abs_error": 0.0026,
+          "tolerance": 0.05,
+          "reason": "Interval [55.04, 57.67] matched [55.0409, 57.6674] within \u00b10.05."
+        }
+      },
+      {
+        "claim_id": "C11",
+        "claim_type": "value",
+        "span": "across `5,256` uncensored customers",
+        "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+        "stated_value": "5,256",
+        "paths": [
+          "churn_summary.selected_threshold_result.eligible_uncensored_customers"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 5256.0 matched tool 5256.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 5256.0,
+          "expected": 5256.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 5256.0 matched tool 5256.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C12",
+        "claim_type": "value",
+        "span": "(`596` right-censored)",
+        "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+        "stated_value": "596",
+        "paths": [
+          "churn_summary.selected_threshold_result.right_censored_customers"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 596.0 matched tool 596.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 596.0,
+          "expected": 596.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 596.0 matched tool 596.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C13",
+        "claim_type": "value",
+        "span": "Median `32` days",
+        "sentence": "- **Empirical Inter-Purchase Gap:** Median `32` days, 75th percentile `70` days.",
+        "stated_value": "32",
+        "paths": [
+          "churn_summary.inter_purchase_gap_distribution_days.p50_median"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 32.0 matched tool 32.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 32.0,
+          "expected": 32.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 32.0 matched tool 32.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C14",
+        "claim_type": "value",
+        "span": "75th percentile `70` days",
+        "sentence": "- **Empirical Inter-Purchase Gap:** Median `32` days, 75th percentile `70` days.",
+        "stated_value": "70",
+        "paths": [
+          "churn_summary.inter_purchase_gap_distribution_days.p75"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 70.0 matched tool 70.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 70.0,
+          "expected": 70.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 70.0 matched tool 70.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C15",
+        "claim_type": "other",
+        "span": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+        "sentence": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+        "stated_value": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+        "paths": [],
+        "arithmetic_verdict": "UNVERIFIABLE",
+        "method_findings": [],
+        "verdict": "UNVERIFIABLE",
+        "reason": "Claim is classified as 'other' (unmapped to a deterministic tool output path).",
+        "details": {
+          "verdict": "UNVERIFIABLE",
+          "reason": "Claim is classified as 'other' (unmapped to a deterministic tool output path)."
+        }
+      },
+      {
+        "claim_id": "C16",
+        "claim_type": "value",
+        "span": "**At-Risk Population:** `324` repeat customers",
+        "sentence": "- **At-Risk Population:** `324` repeat customers (`>= 3` purchase days) have exceeded their personal median cadence (`> max(1.5x median, median + 14d)`), representing `\u00a31,390,289.84` in historical revenue.",
+        "stated_value": "324",
+        "paths": [
+          "at_risk_summary.total_at_risk_count"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 324.0 matched tool 324.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 324.0,
+          "expected": 324.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 324.0 matched tool 324.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C17",
+        "claim_type": "value",
+        "span": "representing `\u00a31,390,289.84` in historical revenue",
+        "sentence": "- **At-Risk Population:** `324` repeat customers (`>= 3` purchase days) have exceeded their personal median cadence (`> max(1.5x median, median + 14d)`), representing `\u00a31,390,289.84` in historical revenue.",
+        "stated_value": "\u00a31,390,289.84",
+        "paths": [
+          "at_risk_summary.total_at_risk_lifetime_revenue"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 1390289.84 matched tool 1390289.8400 within \u00b10.005.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 1390289.84,
+          "expected": 1390289.84,
+          "abs_error": 0.0,
+          "tolerance": 0.005,
+          "reason": "Stated 1390289.84 matched tool 1390289.8400 within \u00b10.005."
+        }
+      },
+      {
+        "claim_id": "C18",
+        "claim_type": "value",
+        "span": "`8` total contracts",
+        "sentence": "- **Contract Snapshot (`shopify_dev_store_sanitized_fixture`):** `8` total contracts (`{'ACTIVE': 4, 'PAUSED': 2, 'CANCELLED': 2}`).",
+        "stated_value": "8",
+        "paths": [
+          "shopify_snapshot.total_contracts"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 8.0 matched tool 8.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 8.0,
+          "expected": 8.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 8.0 matched tool 8.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C19",
+        "claim_type": "value",
+        "span": "**Integrity Checks (`WARNING`):**",
+        "sentence": "- **Integrity Checks (`WARNING`):** Flagged `1` selling-plan order missing a contract ID and `1` ACTIVE contract missing `nextBillingDate`.",
+        "stated_value": "WARNING",
+        "paths": [
+          "shopify_health.status"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Exact status match ('WARNING').",
+        "details": {
+          "verdict": "PASS",
+          "stated": "WARNING",
+          "expected": "WARNING",
+          "reason": "Exact status match ('WARNING')."
+        }
+      },
+      {
+        "claim_id": "C20",
+        "claim_type": "value",
+        "span": "Flagged `1` selling-plan order",
+        "sentence": "- **Integrity Checks (`WARNING`):** Flagged `1` selling-plan order missing a contract ID and `1` ACTIVE contract missing `nextBillingDate`.",
+        "stated_value": "1",
+        "paths": [
+          "shopify_health.checks[0].failing_count"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 1.0 matched tool 1.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 1.0,
+          "expected": 1.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 1.0 matched tool 1.0000 within \u00b11e-06."
+        }
+      },
+      {
+        "claim_id": "C21",
+        "claim_type": "value",
+        "span": "and `1` ACTIVE contract missing",
+        "sentence": "- **Integrity Checks (`WARNING`):** Flagged `1` selling-plan order missing a contract ID and `1` ACTIVE contract missing `nextBillingDate`.",
+        "stated_value": "1",
+        "paths": [
+          "shopify_health.checks[1].failing_count"
+        ],
+        "arithmetic_verdict": "PASS",
+        "method_findings": [],
+        "verdict": "PASS",
+        "reason": "Stated 1.0 matched tool 1.0000 within \u00b11e-06.",
+        "details": {
+          "verdict": "PASS",
+          "stated": 1.0,
+          "expected": 1.0,
+          "abs_error": 0.0,
+          "tolerance": 1e-06,
+          "reason": "Stated 1.0 matched tool 1.0000 within \u00b11e-06."
+        }
+      }
+    ],
+    "claims": [
+      {
+        "claim_id": "C1",
+        "claim_type": "value",
+        "span": "**Status:** `HEALTHY`",
+        "sentence": "- **Status:** `HEALTHY` (Exact Reconciliation: `True`)",
+        "stated_value": "HEALTHY",
+        "paths": [
+          "health.status"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C2",
+        "claim_type": "value",
+        "span": "Exact Reconciliation: `True`",
+        "sentence": "- **Status:** `HEALTHY` (Exact Reconciliation: `True`)",
+        "stated_value": "True",
+        "paths": [
+          "health.reconciliation.reconciled_exactly"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C3",
+        "claim_type": "value",
+        "span": "**Raw Rows:** `1,067,371`",
+        "sentence": "- **Raw Rows:** `1,067,371` | **Excluded Rows:** `290,794` | **Clean Analysis Rows:** `776,577`",
+        "stated_value": "1,067,371",
+        "paths": [
+          "health.reconciliation.total_raw_rows"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C4",
+        "claim_type": "value",
+        "span": "**Excluded Rows:** `290,794`",
+        "sentence": "- **Raw Rows:** `1,067,371` | **Excluded Rows:** `290,794` | **Clean Analysis Rows:** `776,577`",
+        "stated_value": "290,794",
+        "paths": [
+          "health.reconciliation.total_excluded_rows"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C5",
+        "claim_type": "value",
+        "span": "**Clean Analysis Rows:** `776,577`",
+        "sentence": "- **Raw Rows:** `1,067,371` | **Excluded Rows:** `290,794` | **Clean Analysis Rows:** `776,577`",
+        "stated_value": "776,577",
+        "paths": [
+          "health.reconciliation.final_analysis_rows"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C6",
+        "claim_type": "value",
+        "span": "Missing Customer ID (`235,151`)",
+        "sentence": "- **Primary Exclusions:** Missing Customer ID (`235,151`), Exact Duplicates (`34,335`), Cancellations (`18,390`).",
+        "stated_value": "235,151",
+        "paths": [
+          "health.reconciliation.exclusions_by_rule.2_MISSING_CUSTOMER_ID"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C7",
+        "claim_type": "value",
+        "span": "Exact Duplicates (`34,335`)",
+        "sentence": "- **Primary Exclusions:** Missing Customer ID (`235,151`), Exact Duplicates (`34,335`), Cancellations (`18,390`).",
+        "stated_value": "34,335",
+        "paths": [
+          "health.reconciliation.exclusions_by_rule.1_EXACT_DUPLICATE"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C8",
+        "claim_type": "value",
+        "span": "Cancellations (`18,390`)",
+        "sentence": "- **Primary Exclusions:** Missing Customer ID (`235,151`), Exact Duplicates (`34,335`), Cancellations (`18,390`).",
+        "stated_value": "18,390",
+        "paths": [
+          "health.reconciliation.exclusions_by_rule.3_CANCELLATION_INVOICE"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C9",
+        "claim_type": "value",
+        "span": "**90-Day Inferred Churn Rate:** `56.45%`",
+        "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+        "stated_value": "56.45%",
+        "paths": [
+          "churn_summary.selected_threshold_result.inferred_churn_rate"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C10",
+        "claim_type": "value",
+        "span": "95% CI: `[55.04%, 57.67%]`",
+        "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+        "stated_value": "[55.04%, 57.67%]",
+        "paths": [
+          "churn_summary.selected_threshold_result.ci_95_lower",
+          "churn_summary.selected_threshold_result.ci_95_upper"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C11",
+        "claim_type": "value",
+        "span": "across `5,256` uncensored customers",
+        "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+        "stated_value": "5,256",
+        "paths": [
+          "churn_summary.selected_threshold_result.eligible_uncensored_customers"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C12",
+        "claim_type": "value",
+        "span": "(`596` right-censored)",
+        "sentence": "- **90-Day Inferred Churn Rate:** `56.45%` (95% CI: `[55.04%, 57.67%]`) across `5,256` uncensored customers (`596` right-censored).",
+        "stated_value": "596",
+        "paths": [
+          "churn_summary.selected_threshold_result.right_censored_customers"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C13",
+        "claim_type": "value",
+        "span": "Median `32` days",
+        "sentence": "- **Empirical Inter-Purchase Gap:** Median `32` days, 75th percentile `70` days.",
+        "stated_value": "32",
+        "paths": [
+          "churn_summary.inter_purchase_gap_distribution_days.p50_median"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C14",
+        "claim_type": "value",
+        "span": "75th percentile `70` days",
+        "sentence": "- **Empirical Inter-Purchase Gap:** Median `32` days, 75th percentile `70` days.",
+        "stated_value": "70",
+        "paths": [
+          "churn_summary.inter_purchase_gap_distribution_days.p75"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C15",
+        "claim_type": "other",
+        "span": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+        "sentence": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+        "stated_value": "- **Caveat:** Because UCI Online Retail II is non-contractual gift-ware data, inactivity does not prove permanent defection.",
+        "paths": [],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C16",
+        "claim_type": "value",
+        "span": "**At-Risk Population:** `324` repeat customers",
+        "sentence": "- **At-Risk Population:** `324` repeat customers (`>= 3` purchase days) have exceeded their personal median cadence (`> max(1.5x median, median + 14d)`), representing `\u00a31,390,289.84` in historical revenue.",
+        "stated_value": "324",
+        "paths": [
+          "at_risk_summary.total_at_risk_count"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C17",
+        "claim_type": "value",
+        "span": "representing `\u00a31,390,289.84` in historical revenue",
+        "sentence": "- **At-Risk Population:** `324` repeat customers (`>= 3` purchase days) have exceeded their personal median cadence (`> max(1.5x median, median + 14d)`), representing `\u00a31,390,289.84` in historical revenue.",
+        "stated_value": "\u00a31,390,289.84",
+        "paths": [
+          "at_risk_summary.total_at_risk_lifetime_revenue"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C18",
+        "claim_type": "value",
+        "span": "`8` total contracts",
+        "sentence": "- **Contract Snapshot (`shopify_dev_store_sanitized_fixture`):** `8` total contracts (`{'ACTIVE': 4, 'PAUSED': 2, 'CANCELLED': 2}`).",
+        "stated_value": "8",
+        "paths": [
+          "shopify_snapshot.total_contracts"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C19",
+        "claim_type": "value",
+        "span": "**Integrity Checks (`WARNING`):**",
+        "sentence": "- **Integrity Checks (`WARNING`):** Flagged `1` selling-plan order missing a contract ID and `1` ACTIVE contract missing `nextBillingDate`.",
+        "stated_value": "WARNING",
+        "paths": [
+          "shopify_health.status"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C20",
+        "claim_type": "value",
+        "span": "Flagged `1` selling-plan order",
+        "sentence": "- **Integrity Checks (`WARNING`):** Flagged `1` selling-plan order missing a contract ID and `1` ACTIVE contract missing `nextBillingDate`.",
+        "stated_value": "1",
+        "paths": [
+          "shopify_health.checks[0].failing_count"
+        ],
+        "overlaps_claimed": null
+      },
+      {
+        "claim_id": "C21",
+        "claim_type": "value",
+        "span": "and `1` ACTIVE contract missing",
+        "sentence": "- **Integrity Checks (`WARNING`):** Flagged `1` selling-plan order missing a contract ID and `1` ACTIVE contract missing `nextBillingDate`.",
+        "stated_value": "1",
+        "paths": [
+          "shopify_health.checks[1].failing_count"
+        ],
+        "overlaps_claimed": null
+      }
+    ]
+  }
+}

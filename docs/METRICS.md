@@ -36,6 +36,7 @@ One-time buyers cannot have an individual cadence and are excluded to prevent ov
 
 ## 6. Segments (Declared A Priori)
 - **Geography (`geo_segment`):** `UK` if `country = 'United Kingdom'`, else `International`.
-- **Order-Size Proxy (`buyer_type`):** Based on customer average order (invoice) value (`avg_invoice_ revenue`):
-  - `Wholesale_Proxy`: Average invoice revenue $\ge £300.00$ OR lifetime total quantity $\ge 1,000$ units.
-  - `Retail_Proxy`: All other customers.
+- **Order-Size Proxy (`buyer_type`):** Evaluated per customer across all valid (`0_VALID_ANALYSIS_ROW`) transactions in the observation window (`src/analysis/metrics.py`):
+  - `Wholesale_Proxy`: Customer average invoice revenue `avg_invoice_revenue >= £300.00` OR cumulative lifetime quantity `lifetime_qty >= 1,000` units (`SUM(quantity)` across all valid invoices).
+  - `Retail_Proxy`: All other customers (`avg_invoice_revenue < £300.00` AND `lifetime_qty < 1,000` units).
+  - **Circularity Caveat:** Because `lifetime_qty >= 1,000` sums unit volume across all repeat purchases over the customer's observed lifetime, customers who retain for more months have more opportunities to cross the 1,000-unit threshold; therefore, `Wholesale_Proxy` correlates with retention partly by construction and must not be interpreted causally.

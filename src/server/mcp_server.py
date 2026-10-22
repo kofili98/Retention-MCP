@@ -25,6 +25,30 @@ def _read_artifact(filename: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+def _add_months(ym: str, n: int) -> str:
+    year, month = map(int, ym.split("-"))
+    total_months = year * 12 + (month - 1) + n
+    return f"{total_months // 12:04d}-{(total_months % 12) + 1:02d}"
+
+
+def _summarize_period_records(records: list[dict]) -> dict:
+    summary = {}
+    for seg in sorted({r["segment"] for r in records}):
+        seg_rows = [r for r in records if r["segment"] == seg]
+        total_active = sum(r["active_customers"] for r in seg_rows)
+        total_cohort = sum(r["cohort_size"] for r in seg_rows)
+        summary[seg] = {
+            "cohort_count": len(seg_rows),
+            "cohort_months_included": [r["cohort_month"] for r in seg_rows],
+            "active_customers_at_period": total_active,
+            "total_cohort_customers": total_cohort,
+            "weighted_retention_rate": round(total_active / total_cohort, 6) if total_cohort else 0.0,
+            "unweighted_mean_retention_rate": round(
+                sum(r["retention_rate"] for r in seg_rows) / len(seg_rows), 6
+            ) if seg_rows else 0.0,
+        }
+    return summary
+
 @mcp.tool()
 def shopify_store_overview(limit: int = 10) -> dict:
     """
@@ -74,44 +98,56 @@ def shopify_store_overview(limit: int = 10) -> dict:
     return client.graphql_query(query)
 
 @mcp.tool()
-def get_cohort_retention(cohort_by: str = "all", period_months: int = 12) -> dict:
+def get_cohort_retention(
+    cohort_by: str = "all",
+    period_months: int = 12,
+    exclude_truncated_cohorts: bool = True,
+) -> dict:
     """
     Returns deterministic monthly cohort retention rates from the UCI Online Retail II warehouse.
-    - cohort_by: Grouping dimension. Must be one of 'all', 'buyer_type' (Wholesale_Proxy vs Retail_Proxy), or 'geo_segment' (UK vs International).
+    - cohort_by: Grouping dimension ('all', 'buyer_type', or 'geo_segment').
     - period_months: Maximum number of months after acquisition (0 to period_months) to include.
-    Note: Retention is non-monotonic because non-contractual customers can return after inactive months.
+    - exclude_truncated_cohorts: If True, filters out left-censored 2009-12 and cohorts whose activity month
+      lands in the right-truncated final month (2011-12, truncated at 2011-12-09).
     """
     data = _read_artifact("cohort_retention.json")
     if cohort_by not in data["groupings"]:
         raise ValueError(f"cohort_by must be one of {list(data['groupings'].keys())}")
 
-    filtered = [
+    all_filtered = [
         r for r in data["groupings"][cohort_by] if r["period_n"] <= period_months
     ]
+    untruncated_filtered = [
+        r
+        for r in all_filtered
+        if r["cohort_month"] != "2009-12"
+        and _add_months(r["cohort_month"], r["period_n"]) < "2011-12"
+    ]
 
-    target_records = [r for r in filtered if r["period_n"] == period_months]
-    summary_by_segment = {}
-    for seg in sorted({r["segment"] for r in target_records}):
-        seg_rows = [r for r in target_records if r["segment"] == seg]
-        total_active = sum(r["active_customers"] for r in seg_rows)
-        total_cohort = sum(r["cohort_size"] for r in seg_rows)
-        summary_by_segment[seg] = {
-            "eligible_cohorts": len(seg_rows),
-            "active_customers_at_period": total_active,
-            "total_cohort_customers": total_cohort,
-            "weighted_retention_rate": round(total_active / total_cohort, 6) if total_cohort else 0.0,
-            "unweighted_mean_retention_rate": round(
-                sum(r["retention_rate"] for r in seg_rows) / len(seg_rows), 6
-            ) if seg_rows else 0.0,
-        }
+    active_records = untruncated_filtered if exclude_truncated_cohorts else all_filtered
+    target_all = [r for r in all_filtered if r["period_n"] == period_months]
+    target_untruncated = [r for r in untruncated_filtered if r["period_n"] == period_months]
 
     return {
         "metrics_version": data["metrics_version"],
         "cohort_by": cohort_by,
         "max_period_months": period_months,
+        "exclude_truncated_cohorts": exclude_truncated_cohorts,
+        "truncation_rule": "Excludes 2009-12 (left-censored start of dataset) and activity month 2011-12 (right-truncated at 2011-12-09, only 9 days observed).",
         "non_monotonic_warning": "Retail customers can return after multi-month gaps; retention rates are not monotonically decreasing.",
-        "period_target_summary": summary_by_segment,
-        "records": filtered,
+        "segment_definition_and_circularity_caveat": (
+            "Wholesale_Proxy is defined over the full observation window as avg_invoice_revenue >= £300.00 "
+            "OR lifetime_qty >= 1,000 units (docs/METRICS.md). Caveat: because lifetime_qty sums units across "
+            "all repeat orders over the observation window, Wholesale_Proxy correlates with multi-month retention partly by construction."
+        ),
+        "period_target_summary": {
+            "active_selection": _summarize_period_records(
+                target_untruncated if exclude_truncated_cohorts else target_all
+            ),
+            "excluding_truncated_cohorts_2010_01_to_2011_05": _summarize_period_records(target_untruncated),
+            "all_cohorts_including_truncated": _summarize_period_records(target_all),
+        },
+        "records": active_records,
     }
 
 
@@ -144,19 +180,29 @@ def get_at_risk_customers(limit: int = 25) -> dict:
     """
     Returns repeat customers (>= 3 purchase days) who have exceeded their personal inter-purchase cadence
     (days_since_last > max(1.5 * median_gap, median_gap + 14)) but are within 180 days of T_MAX.
-    Sorted by lifetime revenue descending. Returns anonymized customer IDs and aggregates only.
+    Sorted by lifetime revenue (in GBP £) descending. Returns anonymized customer IDs and aggregates only.
     """
     data = _read_artifact("at_risk_customers.json")
     capped_limit = max(1, min(limit, 100))
+    total_rev = data["total_at_risk_lifetime_revenue"]
+    top_customers = [
+        {
+            **cust,
+            "currency": "GBP",
+            "lifetime_revenue_gbp": f"£{cust['lifetime_revenue']:,.2f}",
+        }
+        for cust in data["customers"][:capped_limit]
+    ]
     return {
         "metrics_version": data["metrics_version"],
         "anchor_date_t_max": data["anchor_date_t_max"],
+        "currency": "GBP (£)",
         "eligibility_criteria": data["eligibility_criteria"],
         "total_at_risk_count": data["total_at_risk_count"],
-        "total_at_risk_lifetime_revenue": data["total_at_risk_lifetime_revenue"],
-        "top_at_risk_customers": data["customers"][:capped_limit],
+        "total_at_risk_lifetime_revenue": total_rev,
+        "total_at_risk_lifetime_revenue_gbp": f"£{total_rev:,.2f}",
+        "top_at_risk_customers": top_customers,
     }
-
 
 @mcp.tool()
 def run_data_health_check() -> dict:
@@ -164,7 +210,40 @@ def run_data_health_check() -> dict:
     Returns the UCI warehouse data-quality health report and the exact exclusions ledger
     reconciling 1,067,371 raw rows down to the clean analysis dataset.
     """
-    return _read_artifact("health_report.json")
+    report = _read_artifact("health_report.json")
+    ledger_counts = report["reconciliation"]["exclusions_by_rule"]
+    rule_to_ledger_key = {
+        "RULE_01_EXACT_DUPLICATE": (1, "1_EXACT_DUPLICATE"),
+        "RULE_02_MISSING_CUSTOMER_ID": (2, "2_MISSING_CUSTOMER_ID"),
+        "RULE_03_CANCELLATION_INVOICE": (3, "3_CANCELLATION_INVOICE"),
+        "RULE_04_NON_PRODUCT_CODE": (4, "4_NON_PRODUCT_STOCK_CODE"),
+        "RULE_05_NON_POSITIVE_PRICE_OR_QTY": (5, "5_INVALID_QTY_OR_PRICE"),
+    }
+    for rule in report.get("rules", []):
+        priority, ledger_key = rule_to_ledger_key.get(rule["rule_id"], (None, None))
+        if priority is not None:
+            seq_count = ledger_counts.get(ledger_key, 0)
+            rule["priority_order"] = priority
+            rule["ledger_disposition_key"] = ledger_key
+            rule["sequential_ledger_excluded_count"] = seq_count
+            rule["already_excluded_by_higher_priority_rules"] = (
+                rule["raw_failing_count"] - seq_count
+            )
+
+    report["rule_evaluation_order"] = [
+        "1_EXACT_DUPLICATE",
+        "2_MISSING_CUSTOMER_ID",
+        "3_CANCELLATION_INVOICE",
+        "4_NON_PRODUCT_STOCK_CODE",
+        "5_INVALID_QTY_OR_PRICE",
+    ]
+    report["waterfall_vs_marginal_explanation"] = (
+        "reconciliation.exclusions_by_rule applies rules 1 through 5 sequentially in a mutually exclusive CASE WHEN waterfall "
+        "(each excluded row is counted once under the first rule it triggers, summing to 290,794). "
+        "By contrast, rules[].raw_failing_count evaluates each rule independently against the raw table before prior exclusions "
+        "(e.g., 243,007 total rows lack a Customer ID, of which 7,856 were already removed by Rule 1 as exact duplicates, leaving 235,151 in the ledger)."
+    )
+    return report
 
 
 #@mcm.tool() if False else None # placeholder safety

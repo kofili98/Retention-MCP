@@ -3,13 +3,13 @@
     "step": 1,
     "tool_name": "run_data_health_check",
     "arguments": {},
-    "timestamp_utc": "2026-10-22T11:37:37.311615+00:00"
+    "timestamp_utc": "2026-10-22T17:35:43.777310+00:00"
   },
   {
     "step": 2,
     "tool_name": "get_run_manifest",
     "arguments": {},
-    "timestamp_utc": "2026-10-22T11:37:37.311896+00:00"
+    "timestamp_utc": "2026-10-22T17:35:43.777878+00:00"
   },
   {
     "step": 3,
@@ -17,7 +17,7 @@
     "arguments": {
       "inactivity_days": 90
     },
-    "timestamp_utc": "2026-10-22T11:37:37.312272+00:00"
+    "timestamp_utc": "2026-10-22T17:35:43.778217+00:00"
   },
   {
     "step": 4,
@@ -26,7 +26,7 @@
       "cohort_by": "buyer_type",
       "period_months": 6
     },
-    "timestamp_utc": "2026-10-22T11:37:37.316569+00:00"
+    "timestamp_utc": "2026-10-22T17:35:43.787607+00:00"
   },
   {
     "step": 5,
@@ -34,22 +34,22 @@
     "arguments": {
       "limit": 10
     },
-    "timestamp_utc": "2026-10-22T11:37:37.318070+00:00"
+    "timestamp_utc": "2026-10-22T17:35:43.792908+00:00"
   },
   {
     "step": 6,
     "tool_name": "shopify_subscription_snapshot",
     "arguments": {
-      "use_fixture": false
+      "use_fixture": true
     },
-    "timestamp_utc": "2026-10-22T11:37:38.445831+00:00"
+    "timestamp_utc": "2026-10-22T17:35:43.806815+00:00"
   },
   {
     "step": 7,
     "tool_name": "shopify_data_health_check",
     "arguments": {
-      "use_fixture": false
+      "use_fixture": true
     },
-    "timestamp_utc": "2026-10-22T11:37:39.322837+00:00"
+    "timestamp_utc": "2026-10-22T17:35:43.807235+00:00"
   }
 ]

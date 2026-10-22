@@ -1,4 +1,4 @@
-# Weekly Reproducible Retention Report
+# Reproducible Retention Report
 
 ## 1. Data Health & Exclusions Ledger
 - **Status:** `HEALTHY` (Exact Reconciliation: `True`)
@@ -18,8 +18,8 @@
   - **Primary Metric:** 30-day Reactivation Rate (at least one valid non-cancelled invoice within 30 days of trigger) and Net Incremental Revenue per Customer (net of `C`-prefixed returns).
 
 ## 4. Isolated Shopify Subscription Layer
-- **Contract Snapshot (`shopify_live:komo-retention.myshopify.com`):** `0` total contracts (`{}`).
-- **Integrity Checks (`HEALTHY`):** Flagged `0` selling-plan order missing a contract ID and `0` ACTIVE contract missing `nextBillingDate`.
+- **Contract Snapshot (`shopify_dev_store_sanitized_fixture`):** `8` total contracts (`{'ACTIVE': 4, 'PAUSED': 2, 'CANCELLED': 2}`).
+- **Integrity Checks (`WARNING`):** Flagged `1` selling-plan order missing a contract ID and `1` ACTIVE contract missing `nextBillingDate`.
 
 ---
 ### Cryptographic Run Manifest Stamp
@@ -32,7 +32,7 @@
     "exclusions_ledger.json": "bd84bd6f0084225d70f7f23c4363bd0cb8690845ada208aae4e70343aef113c3",
     "health_report.json": "b7900cfa84077efadcbeed646bd2670bd56dbf611d70bae3c6fdad1a5796f90b"
   },
-  "git_commit": "efd877224ac2ac28faf1c83b439b4577e3ec5a81",
+  "git_commit": "5d4d7a6e5cafd9ab1e946d842a174d7199561f5e",
   "metrics_version": "1.0.0",
   "package_versions": {
     "anthropic": "2.1.0",

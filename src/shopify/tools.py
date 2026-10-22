@@ -38,18 +38,19 @@ query GetSubscriptionSnapshot {
 """
 
 def _load_payload(use_fixture: bool = False) -> dict:
+    if use_fixture:
+        with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+
     client = ShopifyDevClient()
-    if use_fixture or not client.is_configured:
-        with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
+    if not client.is_configured:
+        raise RuntimeError(
+            "Live Shopify data requested (use_fixture=False), but Shopify credentials "
+            "(SHOPIFY_SHOP_DOMAIN, SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET) are not configured."
+        )
 
-    try:
-        data = client.graphql_query(LIVE_SUBSCRIPTION_QUERY)
-    except RuntimeError as e:
-        print(f"[WARNING] Live Shopify query failed ({e}); falling back to fixture.")
-        with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-
+    # Do NOT catch and fall back to fixture when use_fixture=False; let errors surface
+    data = client.graphql_query(LIVE_SUBSCRIPTION_QUERY)
     contracts = [
         {
             "id": node["id"],
@@ -64,11 +65,13 @@ def _load_payload(use_fixture: bool = False) -> dict:
     for order in data.get("orders", {}).get("nodes", []):
         for item in order.get("lineItems", {}).get("nodes", []):
             if item.get("sellingPlan"):
-                orders.append({
-                    "order_id": order["id"],
-                    "selling_plan_name": item["sellingPlan"]["name"],
-                    "contract_id": (item.get("contract") or {}).get("id"),
-                })
+                orders.append(
+                    {
+                        "order_id": order["id"],
+                        "selling_plan_name": item["sellingPlan"]["name"],
+                        "contract_id": (item.get("contract") or {}).get("id"),
+                    }
+                )
     return {
         "source": f"shopify_live:{client.shop_domain}",
         "subscription_contracts": contracts,

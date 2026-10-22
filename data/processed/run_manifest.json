@@ -6,7 +6,7 @@
     "exclusions_ledger.json": "bd84bd6f0084225d70f7f23c4363bd0cb8690845ada208aae4e70343aef113c3",
     "health_report.json": "b7900cfa84077efadcbeed646bd2670bd56dbf611d70bae3c6fdad1a5796f90b"
   },
-  "git_commit": "efd877224ac2ac28faf1c83b439b4577e3ec5a81",
+  "git_commit": "5d4d7a6e5cafd9ab1e946d842a174d7199561f5e",
   "metrics_version": "1.0.0",
   "package_versions": {
     "anthropic": "2.1.0",
