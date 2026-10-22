@@ -5,7 +5,8 @@ import platform
 import subprocess
 from pathlib import Path
 
-PROCESSED_DIR = Path("data/processed")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PROCESSED_DIR = REPO_ROOT / "data" / "processed"
 MANIFEST_PATH = PROCESSED_DIR / "run_manifest.json"
 TRACKED_ARTIFACTS = [
     "exclusions_ledger.json",

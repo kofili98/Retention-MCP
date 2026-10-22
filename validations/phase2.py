@@ -21,4 +21,3 @@ bad_rows = duckdb.sql(f"""
 assert bad_rows == 0, f"Found {bad_rows} dirty rows in clean parquet!"
 
 print(f"PHASE 2 PASSED: {clean_cnt:,} clean rows reconciled with 0 dirty rows!")
-' | Out-File -Encoding utf8 validate_phase2.py'

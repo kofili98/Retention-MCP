@@ -32,11 +32,11 @@
     "exclusions_ledger.json": "bd84bd6f0084225d70f7f23c4363bd0cb8690845ada208aae4e70343aef113c3",
     "health_report.json": "b7900cfa84077efadcbeed646bd2670bd56dbf611d70bae3c6fdad1a5796f90b"
   },
-  "git_commit": "uncommitted",
+  "git_commit": "1489c8491e63957345e136e6af7573916593ede2",
   "metrics_version": "1.0.0",
   "package_versions": {
-    "anthropic": "1.17.0",
-    "duckdb": "2.0.0.dev2610192346",
+    "anthropic": "2.1.0",
+    "duckdb": "2.0.0",
     "mcp": "2.3.0",
     "openpyxl": "3.1.5",
     "pandas": "3.0.6",

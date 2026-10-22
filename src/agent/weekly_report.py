@@ -14,9 +14,11 @@ from server.mcp_server import (
     shopify_subscription_snapshot,
 )
 
-load_dotenv()
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
-REPORTS_DIR = Path("reports")
+load_dotenv(REPO_ROOT / ".env")
+
+REPORTS_DIR = REPO_ROOT / "reports"
 REPORT_MD_PATH = REPORTS_DIR / "weekly_retention_report.md"
 TOOL_LOG_PATH = REPORTS_DIR / "weekly_report_tool_log.json"
 
@@ -86,9 +88,10 @@ def generate_weekly_report() -> None:
         "shopify_health": shopify_health,
     }
 
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if api_key:
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if api_key and not api_key.startswith("sk-ant-..."):
         client = Anthropic(api_key=api_key)
+        model_name = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5")
         prompt = (
             "You are a rigorous Data Integrity & Retention Analyst. Write a concise weekly retention report "
             "strictly using the verified JSON tool outputs below.\n"

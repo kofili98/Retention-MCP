@@ -1,9 +1,14 @@
-import json
 from pathlib import Path
-from mcp.server.mcpserver import MCPServer
+import json
+
+try:
+    from mcp.server.mcpserver import MCPServer
+except ImportError:
+    from mcp.server.fastmcp import FastMCP as MCPServer
 from shopify.tools import get_shopify_snapshot_data, get_shopify_health_data
 
-PROCESSED_DIR = Path("data/processed")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PROCESSED_DIR = REPO_ROOT / "data" / "processed"
 
 mcp = MCPServer(
     "Reproducible-Retention-Server"
@@ -35,11 +40,29 @@ def get_cohort_retention(cohort_by: str = "all", period_months: int = 12) -> dic
     filtered = [
         r for r in data["groupings"][cohort_by] if r["period_n"] <= period_months
     ]
+
+    target_records = [r for r in filtered if r["period_n"] == period_months]
+    summary_by_segment = {}
+    for seg in sorted({r["segment"] for r in target_records}):
+        seg_rows = [r for r in target_records if r["segment"] == seg]
+        total_active = sum(r["active_customers"] for r in seg_rows)
+        total_cohort = sum(r["cohort_size"] for r in seg_rows)
+        summary_by_segment[seg] = {
+            "eligible_cohorts": len(seg_rows),
+            "active_customers_at_period": total_active,
+            "total_cohort_customers": total_cohort,
+            "weighted_retention_rate": round(total_active / total_cohort, 6) if total_cohort else 0.0,
+            "unweighted_mean_retention_rate": round(
+                sum(r["retention_rate"] for r in seg_rows) / len(seg_rows), 6
+            ) if seg_rows else 0.0,
+        }
+
     return {
         "metrics_version": data["metrics_version"],
         "cohort_by": cohort_by,
         "max_period_months": period_months,
         "non_monotonic_warning": "Retail customers can return after multi-month gaps; retention rates are not monotonically decreasing.",
+        "period_target_summary": summary_by_segment,
         "records": filtered,
     }
 

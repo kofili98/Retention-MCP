@@ -1,8 +1,11 @@
 {
-  "mcpServers": {
-    "retention-analysis": {
-      "command": "python3",
-      "args": [ "-m", "server.mcp_server" ]
+    "mcpServers": {
+        "retention-analysis": {
+            "command": "C:\\Users\\matth\\Documents\\Retention-MCP\\.venv\\Scripts\\python.exe",
+            "args": [ "-m", "server.mcp_server" ],
+            "env": {
+                "PYTHONPATH": "C:\\Users\\matth\\Documents\\Retention-MCP\\src"
+            }
+        }
     }
-  }
 }

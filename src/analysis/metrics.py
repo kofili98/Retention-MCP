@@ -3,7 +3,8 @@ from pathlib import Path
 import duckdb
 import numpy as np
 
-PROCESSED_DIR = Path("data/processed")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PROCESSED_DIR = REPO_ROOT / "data" / "processed"
 CLEAN_PARQUET = PROCESSED_DIR / "clean_transactions.parquet"
 COHORT_OUT = PROCESSED_DIR / "cohort_retention.json"
 CHURN_OUT = PROCESSED_DIR / "churn_summary.json"

@@ -2,7 +2,8 @@ import json
 from pathlib import Path
 import duckdb
 
-PROCESSED_DIR = Path("data/processed")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PROCESSED_DIR = REPO_ROOT / "data" / "processed"
 RAW_PARQUET = PROCESSED_DIR / "raw_transactions.parquet"
 CLEAN_PARQUET = PROCESSED_DIR / "clean_transactions.parquet"
 LEDGER_PATH = PROCESSED_DIR / "exclusions_ledger.json"

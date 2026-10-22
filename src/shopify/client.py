@@ -2,8 +2,10 @@ import os
 import time
 import requests
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+REPO_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(REPO_ROOT / ".env")
 
 
 class ShopifyDevClient:
@@ -13,7 +15,13 @@ class ShopifyDevClient:
     """
 
     def __init__(self) -> None:
-        self.shop_domain = os.getenv("SHOPIFY_SHOP_DOMAIN", "")
+        self.shop_domain = (
+            os.getenv("SHOPIFY_SHOP_DOMAIN", "")
+            .strip()
+            .removeprefix("https://")
+            .removeprefix("http://")
+            .rstrip("/")
+            )
         self.client_id = os.getenv("SHOPIFY_CLIENT_ID", "")
         self.client_secret = os.getenv("SHOPIFY_CLIENT_SECRET", "")
         self.api_version = os.getenv("SHOPIFY_API_VERSION", "2026-01")
@@ -22,7 +30,12 @@ class ShopifyDevClient:
 
     @property
     def is_configured(self) -> bool:
-        return bool(self.shop_domain and self.client_id and self.client_secret)
+        return bool(
+        self.shop_domain
+        and self.client_id
+        and self.client_secret
+        and self.client_secret != "dummy_placeholder_key_here_12345"
+    )
 
     def _get_token(self) -> str:
         now = time.time()

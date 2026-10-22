@@ -5,16 +5,17 @@ import zipfile
 from pathlib import Path
 import pandas as pd
 
-RAW_DIR = Path("data/raw")
-PROCESSED_DIR = Path("data/processed")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+RAW_DIR = REPO_ROOT / "data" / "raw"
+PROCESSED_DIR = REPO_ROOT / "data" / "processed"
 UCI_URL = "https://archive.ics.uci.edu/static/public/502/online+retail+ii.zip"
 ZIP_PATH = RAW_DIR / "online_retail_ii.zip"
 XLSX_PATH = RAW_DIR / "online_retail_II.xlsx"
 RAW_PARQUET_PATH = PROCESSED_DIR / "raw_transactions.parquet"
 METADATA_PATH = PROCESSED_DIR / "ingestion_metadata.json"
 
-EXPECTED_XLSX_SHA256 = "e5b8ef31c0d1f0ab2bc0f8a1c6f7d22a1b43e05c9460e8c66b1ef6a7a8858b2d"
-VERIFY_STRICT = False  # Set True after locking your first verified download hash
+EXPECTED_XLSX_SHA256 = "bcbe73b35f5b7babf197fb0cb983a11f5d9ff929078d4aa53d171b1f2df2e980"
+VERIFY_STRICT = True  # Locked to the verified UCI Online Retail II workbook hash
 
 
 def compute_sha256(filepath: Path) -> str:

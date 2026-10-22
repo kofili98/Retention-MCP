@@ -3,16 +3,71 @@ import json
 from pathlib import Path
 from shopify.client import ShopifyDevClient
 
-FIXTURE_PATH = Path("tests/fixtures/shopify_sanitized_fixture.json")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+FIXTURE_PATH = REPO_ROOT / "tests" / "fixtures" / "shopify_sanitized_fixture.json"
+
+LIVE_SUBSCRIPTION_QUERY = """
+query GetSubscriptionSnapshot {
+  subscriptionContracts(first: 100) {
+    nodes {
+      id
+      status
+      nextBillingDate
+      billingPolicy {
+        interval
+        intervalCount
+      }
+    }
+  }
+  orders(first: 100, query: "selling_plan:*") {
+    nodes {
+      id
+      lineItems(first: 20) {
+        nodes {
+          sellingPlan {
+            name
+          }
+          contract {
+            id
+          }
+        }
+      }
+    }
+  }
+}
+"""
 
 def _load_payload(use_fixture: bool = True) -> dict:
     client = ShopifyDevClient()
     if use_fixture or not client.is_configured:
         with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
-    # Fallback or live query if configured
-    with open(FIXTURE_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+
+    data = client.graphql_query(LIVE_SUBSCRIPTION_QUERY)
+    contracts = [
+        {
+            "id": node["id"],
+            "status": node["status"],
+            "nextBillingDate": node.get("nextBillingDate"),
+            "interval": node.get("billingPolicy", {}).get("interval"),
+            "intervalCount": node.get("billingPolicy", {}).get("intervalCount"),
+        }
+        for node in data.get("subscriptionContracts", {}).get("nodes", [])
+    ]
+    orders = []
+    for order in data.get("orders", {}).get("nodes", []):
+        for item in order.get("lineItems", {}).get("nodes", []):
+            if item.get("sellingPlan"):
+                orders.append({
+                    "order_id": order["id"],
+                    "selling_plan_name": item["sellingPlan"]["name"],
+                    "contract_id": (item.get("contract") or {}).get("id"),
+                })
+    return {
+        "source": f"shopify_live:{client.shop_domain}",
+        "subscription_contracts": contracts,
+        "selling_plan_orders": orders,
+    }
 
 def get_shopify_snapshot_data(use_fixture: bool = True) -> dict:
     payload = _load_payload(use_fixture=use_fixture)

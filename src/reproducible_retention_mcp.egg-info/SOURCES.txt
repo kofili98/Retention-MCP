@@ -1,5 +1,6 @@
 README.md
 pyproject.toml
+src/agent/weekly_report.py
 src/analysis/health.py
 src/analysis/ingest.py
 src/analysis/manifest.py
