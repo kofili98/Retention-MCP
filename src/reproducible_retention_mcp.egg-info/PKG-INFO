@@ -2,7 +2,7 @@ Metadata-Version: 2.4
 Name: reproducible-retention-mcp
 Version: 0.1.0
 Summary: Deterministic cohort retention & inferred churn analysis exposed via MCP
-Requires-Python: ==3.15.0
+Requires-Python: >=3.11
 Description-Content-Type: text/markdown
 Requires-Dist: duckdb>=1.1.2
 Requires-Dist: pandas>=2.3.3
@@ -17,8 +17,7 @@ Requires-Dist: python-dotenv>=1.0.1
 
 # Reproducible Retention Analysis: MCP + Agent Pipeline
 
-An open, deterministic cohort retention and inferred churn pipeline built on real public transaction data, exposed via a read-only **Model Context Protocol (MCP)** server and automated weekly reporting agent, alongside an isolated **Shopify Subscriptions** integration layer.
-
+An open, deterministic cohort retention and inferred churn pipeline built on real public transaction data, exposed via a read-only **Model Context Protocol (MCP)** server and automated **reproducible retention reporting agent** (which operates as a static benchmark report on the historical UCI dataset and only functions as a recurring weekly monitor when connected to a live Shopify store).
 ## 1. Problem Statement & Core Claim
 Retention analyses frequently fail basic reproducibility checks because churn definitions are implicit, data cleaning happens ad-hoc in spreadsheets, or relative dates (`NOW()`) cause historical numbers to drift.
 
@@ -44,14 +43,16 @@ Retention analyses frequently fail basic reproducibility checks because churn de
 ## 4. Data Quality Findings & Exclusions Ledger
 Rather than silently dropping malformed rows, `analysis/health.py` classifies every row sequentially across five mutually exclusive rules:
 
-| Priority | Rule ID | Disposition | Description |
-|---|---|---|---|
-| 1 | `1_EXACT_DUPLICATE` | `EXCLUDE` | Identical transaction rows (including overlapping Dec 2010 boundary rows between Sheet 1 and Sheet 2). |
-| 2 | `2_MISSING_CUSTOMER_ID` | `EXCLUDE_FROM_COHORTS` | ~243k guest/counter transactions lacking a `Customer ID`; cannot be tracked across months. |
-| 3 | `3_CANCELLATION_INVOICE` | `EXCLUDE_AS_RETURN` | Invoices prefixed with `C` representing returns/cancellations rather than active purchases. |
-| 4 | `4_NON_PRODUCT_STOCK_CODE` | `EXCLUDE` | Postage (`POST`), manuals (`M`), bank charges, Amazon fees (`DOT`), bad debt (`ADJUST`), and `TEST` entries. |
-| 5 | `5_INVALID_QTY_OR_PRICE` | `EXCLUDE` | Non-cancellation lines with `Quantity <= 0` or `Price <= 0.0` (inventory write-offs). |
-| — | `0_VALID_ANALYSIS_ROW` | `KEEP` | Clean customer purchase records reconciled into `clean_transactions.parquet`. |
+| Priority | Rule ID | Marginal Failing Rows (`rules[]`) | Sequential Ledger Exclusions (`exclusions_by_rule`) | Prior-Rule Overlap |
+|---|---|---|---|---|
+| 1 | `1_EXACT_DUPLICATE` | `34,335` | `34,335` | `0` |
+| 2 | `2_MISSING_CUSTOMER_ID` | `243,007` | `235,151` | `7,856` |
+| 3 | `3_CANCELLATION_INVOICE` | `19,494` | `18,390` | `1,104` |
+| 4 | `4_NON_PRODUCT_STOCK_CODE` | `5,680` | `2,858` | `2,822` |
+| 5 | `5_INVALID_QTY_OR_PRICE` | `6,207` | `60` | `6,147` |
+| **Total** | — | **`308,723` (un-deduplicated)** | **`290,794` (mutually exclusive)** | **`17,929`** |
+
+> **Why Ledger Counts Differ from Marginal Rule Counts:** `reconciliation.exclusions_by_rule` evaluates rules 1–5 sequentially in a single `CASE WHEN` waterfall so every excluded row is counted exactly once (`1,067,371 - 290,794 = 776,577` clean rows). In `health_report.json`, `rules[].raw_failing_count` reports the independent marginal count of raw rows matching each defect condition prior to earlier waterfall exclusions (with note: Rule 3, 4, and 5 marginal queries in `health.py` do not filter `customer_id IS NOT NULL`, so rows failing multiple rules appear in each rule's marginal count).
 
 ## 5. Pre-Registered Metric Definitions & Sensitivity Context
 Full equations live in [`docs/METRICS.md`](docs/METRICS.md):
@@ -65,7 +66,16 @@ Full equations live in [`docs/METRICS.md`](docs/METRICS.md):
 - Demonstrates how contractual subscriptions (`ACTIVE`, `PAUSED`, `CANCELLED` via `SubscriptionContract` and `SellingPlan`) differ structurally from inferred retail churn.
 - Includes automated integrity checks for orphan selling-plan orders missing a contract ID and active contracts missing a `nextBillingDate`.
 
-## 7. Quickstart (One-Command Reproduction)
+## 7. Deterministic Claim Checker & Known Limits
+Before any generated retention report is published (`src/agent/weekly_report.py`), `grade_report()` in `src/agent/claim_checker.py` extracts claims into `reports/claims.json`, verifies sentence-level coverage against `src/agent/coverage_allowlist.json`, runs deterministic arithmetic and method-validity verifiers (`value`, `difference`, `ci_overlap`, and `METHOD_RULES`), and allows at most one revision pass before gating the report.
+
+**Known Limits:**
+- **Verifies against tool output, not reality:** It checks that the report matches the JSON returned by the MCP tools, so a bug inside an upstream data tool is outside its scope (and is covered instead by `tests/test_invariants.py`).
+- **Checks only registered claim types:** Only `value`, `difference`, and `ci_overlap` claims are verified deterministically; all other claims are classified as `other` and reported as `UNVERIFIABLE` instead of silently passing.
+- **Extractor recall is measured, not assumed:** Because the extractor is an LLM, sentence-level recall is deterministically measured and gated by `check_coverage()` rather than assumed to be complete.
+- **Method rules catch known bad patterns, not every flaw in reasoning:** `METHOD_RULES` catches specific statistical anti-patterns (interpreting CI non-overlap across nested customer thresholds as a significance test, unhedged causal wording on observational data, and claiming significance without a test statistic in tool outputs), not arbitrary reasoning errors.
+
+## 8. Quickstart (One-Command Reproduction)
 ```bash
 git clone <repo-url>
 cd reproducible-retention-mcp

@@ -1,5 +1,6 @@
 README.md
 pyproject.toml
+src/agent/claim_checker.py
 src/agent/weekly_report.py
 src/analysis/health.py
 src/analysis/ingest.py
@@ -13,4 +14,5 @@ src/reproducible_retention_mcp.egg-info/top_level.txt
 src/server/mcp_server.py
 src/shopify/client.py
 src/shopify/tools.py
+tests/test_claim_checker.py
 tests/test_invariants.py

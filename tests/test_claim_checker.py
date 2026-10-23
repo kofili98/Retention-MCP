@@ -1,11 +1,15 @@
 """
-Unit, integration, and mutation tests for the deterministic Claim Checker
-following the 5-stage build order:
+Unit, integration, and mutation tests for the deterministic Claim Checker & Manifest Update:
   1. Path resolver and number normalizer (including rounding tolerance rules)
   2. Verifiers for value, difference, and ci_overlap on real churn/at-risk outputs + METHOD_RULES
   3. Deterministic coverage check with allow-list
   4. Extractor verification against hand-labeled claims
   5. Mutation tests and the pipeline revision gate
+  6. Extended Manifest provenance fields (git_dirty, lockfile_sha256, agent_model_id, checker_version,
+     run_timestamp_utc, shopify_response_sha256, shopify_query_timestamp_utc)
+  7. `save_report(body)` MCP tool & `evaluate_agent_run` (final tool call & saved file check)
+  8. The 3 Manifest Checker Rules (every 64-hex string in build_manifest(), byte-for-byte equality,
+     and missing manifest block failure)
 """
 
 import json
@@ -19,15 +23,19 @@ except ImportError:
 from agent.claim_checker import (
     ExtractedClaim,
     check_coverage,
+    evaluate_agent_run,
     extract_claims,
     grade_report,
     matches_within_tolerance,
     normalize_number,
     normalize_range,
     resolve_path,
+    verify_manifest_rules,
     verify_single_claim,
 )
 import agent.weekly_report as wr
+from analysis.manifest import build_manifest, extract_all_manifest_hashes
+from server.mcp_server import save_report
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PROCESSED_DIR = REPO_ROOT / "data" / "processed"
@@ -76,9 +84,11 @@ def build_real_tool_outputs() -> dict:
     }
 
 
-def build_reference_report_md(tool_outputs: dict) -> str:
-    """Builds the deterministic reference report matching `tool_outputs` (independent of whether disk report used live 0-contract Shopify store or fixture)."""
-    manifest = json.loads((PROCESSED_DIR / "run_manifest.json").read_text(encoding="utf-8"))
+def build_reference_report_md(
+    tool_outputs: dict, manifest: dict | None = None
+) -> tuple[str, dict]:
+    """Builds the deterministic reference report and manifest matching `tool_outputs`."""
+    mf = manifest or build_manifest()
     narrative = wr._build_deterministic_narrative(
         tool_outputs["health"],
         tool_outputs["churn_summary"],
@@ -86,11 +96,10 @@ def build_reference_report_md(tool_outputs: dict) -> str:
         tool_outputs["shopify_snapshot"],
         tool_outputs["shopify_health"],
     )
-    manifest_stamp = (
-        "\n\n---\n### Cryptographic Run Manifest Stamp\n"
-        f"```json\n{json.dumps(manifest, indent=2)}\n```\n"
+    full_md = wr.append_manifest_in_harness(
+        f"# Reproducible Retention Report\n\n{narrative}", mf
     )
-    return f"# Reproducible Retention Report\n\n{narrative}{manifest_stamp}"
+    return full_md, mf
 
 
 if pytest is not None:
@@ -126,19 +135,16 @@ def test_path_resolver_indices_and_selectors(real_tool_outputs):
 
 
 def test_number_and_range_normalizer_and_tolerance():
-    # "61.38–63.92%" -> ((61.38, 63.92), True, 2)
     bounds, is_pct, dec = normalize_range("61.38–63.92%")
     assert bounds == (61.38, 63.92)
     assert is_pct is True
     assert dec == 2
 
-    # "£1,390,289.84" -> (1390289.84, False, 2)
     val, is_pct_curr, dec_curr = normalize_number("£1,390,289.84")
     assert val == 1390289.84
     assert is_pct_curr is False
     assert dec_curr == 2
 
-    # Tolerance rule: stated 62.6% matches 62.64% (0.62641) within 0.05 percentage points
     passed, aligned, err, tol = matches_within_tolerance(
         stated_val=62.6, tool_val=0.62641, decimals=1, is_percentage=True
     )
@@ -146,7 +152,6 @@ def test_number_and_range_normalizer_and_tolerance():
     assert round(aligned, 3) == 62.641
     assert err <= 0.05
 
-    # Stated 62.5% should fail against 62.641% (error = 0.141 > 0.05)
     passed_bad, _, _, _ = matches_within_tolerance(
         stated_val=62.5, tool_val=0.62641, decimals=1, is_percentage=True
     )
@@ -157,7 +162,6 @@ def test_number_and_range_normalizer_and_tolerance():
 # 2. VERIFIERS (value, difference, ci_overlap) & METHOD_RULES ON REAL CHURN DATA
 # ============================================================================
 def test_verifiers_on_real_churn_and_at_risk_output(real_tool_outputs):
-    # Value claim: 60-day churn rate stated as 62.6% vs tool 0.62641
     c_val = ExtractedClaim(
         claim_id="C1",
         claim_type="value",
@@ -166,10 +170,8 @@ def test_verifiers_on_real_churn_and_at_risk_output(real_tool_outputs):
         stated_value="62.6%",
         paths=["churn_summary.full_sensitivity_table[inactivity_threshold_days=60].inferred_churn_rate"],
     )
-    res_val = verify_single_claim(c_val, real_tool_outputs)
-    assert res_val["verdict"] == "PASS"
+    assert verify_single_claim(c_val, real_tool_outputs)["verdict"] == "PASS"
 
-    # Value range claim: 60-day 95% CI "61.38–63.92%" vs (0.613764, 0.639237)
     c_range = ExtractedClaim(
         claim_id="C2",
         claim_type="value",
@@ -181,10 +183,8 @@ def test_verifiers_on_real_churn_and_at_risk_output(real_tool_outputs):
             "churn_summary.full_sensitivity_table[0].ci_95_upper",
         ],
     )
-    res_range = verify_single_claim(c_range, real_tool_outputs)
-    assert res_range["verdict"] == "PASS"
+    assert verify_single_claim(c_range, real_tool_outputs)["verdict"] == "PASS"
 
-    # Difference claim: 60-day churn (62.641%) minus 90-day churn (56.4498%) = 6.19%
     c_diff = ExtractedClaim(
         claim_id="C3",
         claim_type="difference",
@@ -196,10 +196,8 @@ def test_verifiers_on_real_churn_and_at_risk_output(real_tool_outputs):
             "churn_summary.full_sensitivity_table[inactivity_threshold_days=90].inferred_churn_rate",
         ],
     )
-    res_diff = verify_single_claim(c_diff, real_tool_outputs)
-    assert res_diff["verdict"] == "PASS"
+    assert verify_single_claim(c_diff, real_tool_outputs)["verdict"] == "PASS"
 
-    # CI overlap claim + METHOD_RULES warn: 60d CI [0.6138, 0.6392] vs 90d CI [0.5504, 0.5767] do not overlap
     c_overlap = ExtractedClaim(
         claim_id="C4",
         claim_type="ci_overlap",
@@ -215,14 +213,12 @@ def test_verifiers_on_real_churn_and_at_risk_output(real_tool_outputs):
         overlaps_claimed=False,
     )
     res_overlap = verify_single_claim(c_overlap, real_tool_outputs)
-    # Arithmetic CI check passes (they truly are disjoint), but METHOD_RULES triggers WARN and FAIL_IF_NO_TEST!
     assert res_overlap["arithmetic_verdict"] == "PASS"
     assert any(m["severity"] == "WARN" for m in res_overlap["method_findings"])
     assert res_overlap["verdict"] == "FAIL"
 
 
 def test_method_validity_hedged_vs_unhedged(real_tool_outputs):
-    # Hedged negation ("inactivity does not prove permanent defection") must NOT fail
     c_hedged = ExtractedClaim(
         claim_id="C5",
         claim_type="value",
@@ -233,7 +229,6 @@ def test_method_validity_hedged_vs_unhedged(real_tool_outputs):
     )
     assert verify_single_claim(c_hedged, real_tool_outputs)["verdict"] == "PASS"
 
-    # Unhedged causal claim ("proves permanent defection") MUST fail
     c_unhedged = ExtractedClaim(
         claim_id="C6",
         claim_type="value",
@@ -252,14 +247,13 @@ def test_method_validity_hedged_vs_unhedged(real_tool_outputs):
 # 3. COVERAGE CHECK TESTS
 # ============================================================================
 def test_coverage_check_catches_skipped_numeric_sentence(real_tool_outputs):
-    report_md = build_reference_report_md(real_tool_outputs)
+    report_md, _ = build_reference_report_md(real_tool_outputs)
     all_claims = extract_claims(report_md, real_tool_outputs, use_llm=False)
 
     full_cov = check_coverage(report_md, all_claims)
     assert full_cov["passed"] is True
     assert full_cov["recall"] == 1.0
 
-    # Drop the At-Risk sentence claims and verify coverage check flags the missing sentence
     partial_claims = [
         c for c in all_claims if "324" not in c.sentence and "1,390,289.84" not in c.sentence
     ]
@@ -273,7 +267,7 @@ def test_coverage_check_catches_skipped_numeric_sentence(real_tool_outputs):
 # 4. EXTRACTOR CHECKED AGAINST HAND-LABELED CLAIMS
 # ============================================================================
 def test_extractor_against_hand_labeled_claims(real_tool_outputs):
-    report_md = build_reference_report_md(real_tool_outputs)
+    report_md, _ = build_reference_report_md(real_tool_outputs)
     extracted = extract_claims(report_md, real_tool_outputs, use_llm=False)
 
     hand_labeled_expectations = {
@@ -298,29 +292,30 @@ def test_extractor_against_hand_labeled_claims(real_tool_outputs):
 # 5. MUTATION TESTS & PIPELINE REVISION GATE
 # ============================================================================
 def test_mutation_corrupted_numbers_and_pipeline_revision_gate(real_tool_outputs):
-    valid_report = build_reference_report_md(real_tool_outputs)
+    valid_report, manifest = build_reference_report_md(real_tool_outputs)
 
-    # Baseline valid report passes grade_report
-    baseline_grade = grade_report(valid_report, real_tool_outputs, use_llm_extractor=False)
+    baseline_grade = grade_report(
+        valid_report, real_tool_outputs, expected_manifest=manifest, use_llm_extractor=False
+    )
     assert baseline_grade["passed"] is True
     assert baseline_grade["summary"]["fail_count"] == 0
 
-    # Mutation 1: Corrupt 90-day churn rate from 56.45% to 62.64%
     mutated_num_report = valid_report.replace("`56.45%`", "`62.64%`")
-    mut1_grade = grade_report(mutated_num_report, real_tool_outputs, use_llm_extractor=False)
+    mut1_grade = grade_report(
+        mutated_num_report, real_tool_outputs, expected_manifest=manifest, use_llm_extractor=False
+    )
     assert mut1_grade["passed"] is False
     assert mut1_grade["summary"]["fail_count"] >= 1
 
-    # Mutation 2: Inject unhedged causal claim
     mutated_causal_report = valid_report.replace(
         "inactivity does not prove permanent defection.",
         "inactivity proves permanent defection because of price sensitivity.",
     )
-    mut2_grade = grade_report(mutated_causal_report, real_tool_outputs, use_llm_extractor=False)
+    mut2_grade = grade_report(
+        mutated_causal_report, real_tool_outputs, expected_manifest=manifest, use_llm_extractor=False
+    )
     assert mut2_grade["passed"] is False
 
-    # Pipeline Gate Test: Inject a corrupted v1 draft into generate_weekly_report()
-    # Verify that attempt 1 fails, triggers revision_triggered=True, and attempt 2 repairs and publishes!
     def bad_draft_fn(bundle: dict) -> str:
         good = wr._build_deterministic_narrative(
             bundle["health"],
@@ -349,6 +344,111 @@ def test_mutation_corrupted_numbers_and_pipeline_revision_gate(real_tool_outputs
     assert gate_res["audit"]["attempt_1"]["passed"] is False
     assert gate_res["audit"]["revision_triggered"] is True
     assert gate_res["audit"]["attempt_2"]["passed"] is True
+    assert gate_res["audit"]["agent_eval"]["passed"] is True
+
+
+# ============================================================================
+# 6. EXTENDED MANIFEST PROVENANCE FIELDS
+# ============================================================================
+def test_extended_manifest_fields():
+    manifest = build_manifest()
+    required_new_fields = [
+        "git_dirty",
+        "lockfile_sha256",
+        "lockfile_source",
+        "agent_model_id",
+        "checker_version",
+        "run_timestamp_utc",
+        "shopify_response_sha256",
+        "shopify_query_timestamp_utc",
+    ]
+    for field in required_new_fields:
+        assert field in manifest, f"Missing required manifest field: {field}"
+
+    assert isinstance(manifest["git_dirty"], bool)
+    assert len(manifest["lockfile_sha256"]) == 64
+    assert len(manifest["shopify_response_sha256"]) == 64
+    assert len(extract_all_manifest_hashes(manifest)) >= 7
+
+
+# ============================================================================
+# 7. `save_report(body)` TOOL & AGENT EVAL
+# ============================================================================
+def test_save_report_strips_model_manifest_and_agent_eval(real_tool_outputs):
+    narrative = wr._build_deterministic_narrative(
+        real_tool_outputs["health"],
+        real_tool_outputs["churn_summary"],
+        real_tool_outputs["at_risk_summary"],
+        real_tool_outputs["shopify_snapshot"],
+        real_tool_outputs["shopify_health"],
+    )
+    # Simulate a model-written Section (f) with a hallucinated hash
+    body_with_model_stamp = (
+        f"# Reproducible Retention Report\n\n{narrative}\n\n"
+        "## (f) Run manifest stamp\n```json\n"
+        '{"raw_xlsx_sha256": "' + ("f" * 64) + '"}\n```\n'
+    )
+
+    res = save_report(body_with_model_stamp)
+    saved_path = Path(res["path"])
+    assert saved_path.exists()
+    saved_text = saved_path.read_text(encoding="utf-8")
+
+    # Model-written fake hash ("f"*64) must be stripped and replaced by canonical build_manifest()
+    assert ("f" * 64) not in saved_text
+    assert "## (f) Run manifest stamp" in saved_text
+
+    # Agent eval passes when save_report is the final call and file exists
+    good_log = [
+        {"step": 1, "tool_name": "run_data_health_check"},
+        {"step": 2, "tool_name": "save_report"},
+    ]
+    assert evaluate_agent_run(good_log, saved_report_path=saved_path)["passed"] is True
+
+    # Agent eval fails when save_report is skipped or not last
+    bad_log = [
+        {"step": 1, "tool_name": "run_data_health_check"},
+        {"step": 2, "tool_name": "get_churn_summary"},
+    ]
+    eval_skipped = evaluate_agent_run(bad_log, saved_report_path=saved_path)
+    assert eval_skipped["passed"] is False
+    assert any("save_report" in e for e in eval_skipped["errors"])
+
+
+# ============================================================================
+# 8. THE 3 MANIFEST CHECKER RULES
+# ============================================================================
+def test_three_manifest_checker_rules(real_tool_outputs):
+    valid_report, manifest = build_reference_report_md(real_tool_outputs)
+
+    # Valid report passes all 3 manifest rules
+    ok_check = verify_manifest_rules(valid_report, expected_manifest=manifest)
+    assert ok_check["passed"] is True
+
+    # Rule 1 Failure: A 64-hex string in the report that does not appear in build_manifest()
+    rogue_hash = "a" * 64
+    rogue_report = f"Verified against commit hash `{rogue_hash}`.\n\n" + valid_report
+    r1_check = verify_manifest_rules(rogue_report, expected_manifest=manifest)
+    assert r1_check["passed"] is False
+    assert r1_check["all_64hex_in_manifest"] is False
+    assert rogue_hash in r1_check["unknown_64hex_strings"]
+
+    # Rule 2 Failure: Manifest block altered by 1 whitespace/character (fails byte-for-byte check)
+    altered_stamp_report = valid_report.replace(
+        '"metrics_version": "1.0.0"', '"metrics_version":  "1.0.0"'
+    )
+    r2_check = verify_manifest_rules(altered_stamp_report, expected_manifest=manifest)
+    assert r2_check["passed"] is False
+    assert r2_check["byte_for_byte_match"] is False
+
+    # Rule 3 Failure: Report with no manifest block fails
+    no_manifest_report = valid_report.split("## (f) Run manifest stamp")[0]
+    r3_check = verify_manifest_rules(no_manifest_report, expected_manifest=manifest)
+    assert r3_check["passed"] is False
+    assert r3_check["has_manifest_block"] is False
+    assert grade_report(
+        no_manifest_report, real_tool_outputs, expected_manifest=manifest, use_llm_extractor=False
+    )["passed"] is False
 
 
 if __name__ == "__main__":
@@ -360,4 +460,7 @@ if __name__ == "__main__":
     test_coverage_check_catches_skipped_numeric_sentence(bundle)
     test_extractor_against_hand_labeled_claims(bundle)
     test_mutation_corrupted_numbers_and_pipeline_revision_gate(bundle)
-    print("ALL 7 CLAIM CHECKER TEST SUITES PASSED!")
+    test_extended_manifest_fields()
+    test_save_report_strips_model_manifest_and_agent_eval(bundle)
+    test_three_manifest_checker_rules(bundle)
+    print("ALL 8 CLAIM & MANIFEST CHECKER TEST SUITES PASSED!")

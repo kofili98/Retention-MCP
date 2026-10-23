@@ -8,6 +8,7 @@
       "unverifiable_count": 1,
       "method_warning_count": 0,
       "coverage_recall": 1.0,
+      "manifest_passed": true,
       "min_coverage_recall_threshold": 1.0,
       "max_unverifiable_threshold": 2
     },
@@ -48,14 +49,27 @@
       "unverifiable_count": 1,
       "method_warning_count": 0,
       "coverage_recall": 1.0,
+      "manifest_passed": true,
       "min_coverage_recall_threshold": 1.0,
       "max_unverifiable_threshold": 2
     },
     "failures": [],
     "uncovered_sentences": []
   },
+  "agent_eval": {
+    "passed": true,
+    "final_tool_call": "save_report",
+    "saved_report_exists": true,
+    "errors": []
+  },
+  "saved_report": {
+    "path": "C:\\Users\\ofili\\Documents\\GitHub\\Retention-MCP\\reports\\2026-10-23.md",
+    "latest_path": "C:\\Users\\ofili\\Documents\\GitHub\\Retention-MCP\\reports\\weekly_retention_report.md",
+    "manifest_sha256": "64aed35ea8f0669c44ea618120c1cd5e5ad54e6a933210990f87720b3cc5eb24"
+  },
   "final_verification": {
     "passed": true,
+    "checker_version": "1.0.0",
     "extractor_model": "claude-sonnet-4-5-20250929",
     "rounding_tolerance_rule": {
       "description": "Half-ULP rounding tolerance based on stated decimal places (0.5 * 10^-d), with a minimum tolerance of 0.05 percentage points for percentages so a 1-decimal stated percentage like 62.6% matches 62.64% (|62.6 - 62.64| = 0.04 <= 0.05).",
@@ -70,8 +84,17 @@
       "unverifiable_count": 1,
       "method_warning_count": 0,
       "coverage_recall": 1.0,
+      "manifest_passed": true,
       "min_coverage_recall_threshold": 1.0,
       "max_unverifiable_threshold": 2
+    },
+    "manifest_check": {
+      "passed": true,
+      "has_manifest_block": true,
+      "byte_for_byte_match": true,
+      "all_64hex_in_manifest": true,
+      "unknown_64hex_strings": [],
+      "errors": []
     },
     "coverage": {
       "total_numeric_or_stat_sentences": 7,

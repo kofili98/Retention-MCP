@@ -1,11 +1,11 @@
 """
-Deterministic Claim Checker for Reproducible Retention Reports.
+Deterministic Claim Checker & Manifest Verifier for Reproducible Retention Reports.
 
 Principle:
-1. Extract (LLM with structured output schema, or deterministic fallback) -> claims.json
+1. Extract (LLM at temperature=0 with structured output schema, or deterministic fallback) -> claims.json
 2. Coverage check (regex + allow-list, no LLM) -> verifies every numeric/statistical sentence is claimed
-3. Verify (deterministic Python per claim type + method-validity rules) -> PASS / FAIL / UNVERIFIABLE
-4. Grade (thresholds) -> gates the report and triggers at most one revision pass
+3. Verify (deterministic Python per claim type + method-validity rules + 3 manifest stamp rules) -> PASS / FAIL / UNVERIFIABLE
+4. Grade (thresholds + agent eval for save_report final call) -> gates the report and triggers at most one revision pass
 """
 
 from __future__ import annotations
@@ -17,6 +17,13 @@ from pathlib import Path
 from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, Field
+
+from analysis.manifest import (
+    CLAIM_CHECKER_VERSION,
+    MANIFEST_PATH,
+    build_manifest,
+    extract_all_manifest_hashes,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ALLOWLIST_PATH = Path(__file__).resolve().parent / "coverage_allowlist.json"
@@ -212,12 +219,6 @@ def normalize_range(raw: str) -> tuple[tuple[float, float], bool, int]:
 
 
 def compute_tolerance(decimals: int, is_percentage: bool) -> float:
-    """
-    Centralized tolerance calculation from ROUNDING_TOLERANCE_RULE.
-    - For integers (decimals == 0 and not percentage): 1e-6 (exact integer match)
-    - For percentages: max(0.5 * 10^(-decimals), 0.05) percentage points
-    - For standard floats: 0.5 * 10^(-decimals)
-    """
     if decimals == 0 and not is_percentage:
         return float(ROUNDING_TOLERANCE_RULE["integer_exact_tolerance"])
     half_ulp = 0.5 * (10.0 ** (-decimals))
@@ -227,10 +228,6 @@ def compute_tolerance(decimals: int, is_percentage: bool) -> float:
 
 
 def align_tool_value(tool_val: float, is_percentage: bool, stated_val: float) -> float:
-    """
-    If the claim states a percentage (e.g. 62.6%) and the tool stores a proportion in [0, 1]
-    (e.g. 0.62641), converts the tool proportion to percentage points (62.641).
-    """
     if is_percentage and 0.0 <= abs(tool_val) <= 1.0 and abs(stated_val) > 1.0:
         return tool_val * 100.0
     return float(tool_val)
@@ -242,9 +239,6 @@ def matches_within_tolerance(
     decimals: int,
     is_percentage: bool,
 ) -> tuple[bool, float, float, float]:
-    """
-    Returns (passed, aligned_tool_val, abs_error, tolerance).
-    """
     aligned = align_tool_value(float(tool_val), is_percentage, stated_val)
     tol = compute_tolerance(decimals, is_percentage)
     err = abs(stated_val - aligned)
@@ -255,7 +249,6 @@ def matches_within_tolerance(
 # STEP 3B: METHOD-VALIDITY RULES (Separate from Arithmetic)
 # ============================================================================
 METHOD_RULES: list[tuple[str, str, str]] = [
-    # (pattern on the claim span/sentence, severity, message)
     (
         r"(non-?overlap|don't overlap|do not overlap).*(significan|differ)",
         "WARN",
@@ -302,10 +295,6 @@ def _has_statistical_test_in_outputs(tool_outputs: dict, paths: list[str]) -> bo
 def evaluate_method_rules(
     claim: ExtractedClaim, tool_outputs: dict
 ) -> list[dict[str, str]]:
-    """
-    Checks each sentence in a claim's span/sentence against METHOD_RULES.
-    Returns a list of triggered findings: [{"severity": "WARN"|"FAIL", "rule_type": ..., "message": ...}]
-    """
     candidate_sentences = [
         s.strip()
         for s in re.split(r"(?<=[.!?])\s+", claim.sentence or claim.span)
@@ -551,6 +540,112 @@ def verify_single_claim(claim: ExtractedClaim, tool_outputs: dict) -> dict[str, 
 
 
 # ============================================================================
+# STEP 3D: DETERMINISTIC MANIFEST STAMP CHECKER (3 RULES) & AGENT EVAL
+# ============================================================================
+_HEX64_RE = re.compile(r"\b[0-9a-fA-F]{64}\b")
+_MANIFEST_BLOCK_RE = re.compile(
+    r"(?:#{2,3}\s*(?:\(f\)\s*)?(?:Cryptographic\s+)?Run\s+manifest\s+stamp)\r?\n```json\r?\n(.*?)\r?\n```",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _load_expected_manifest(expected_manifest: dict | None = None) -> dict:
+    if expected_manifest is not None:
+        return expected_manifest
+    if MANIFEST_PATH.exists():
+        with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return build_manifest()
+
+
+def verify_manifest_rules(
+    report_md: str, expected_manifest: dict | None = None
+) -> dict[str, Any]:
+    """
+    Enforces the 3 deterministic manifest rules on `report_md`:
+      1. Every 64-hex string in a report must appear in `build_manifest()`.
+      2. The manifest block must equal `build_manifest()` byte for byte.
+      3. A report with no manifest block fails.
+    """
+    manifest = _load_expected_manifest(expected_manifest)
+    valid_hashes = extract_all_manifest_hashes(manifest)
+    expected_stamp_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
+
+    # Rule 3: A report with no manifest block fails
+    block_match = _MANIFEST_BLOCK_RE.search(report_md)
+    has_manifest_block = block_match is not None
+
+    # Rule 2: The manifest block must equal build_manifest() byte for byte
+    if has_manifest_block:
+        stamped_bytes = block_match.group(1).replace("\r\n", "\n").encode("utf-8")
+        byte_for_byte_match = stamped_bytes == expected_stamp_bytes
+    else:
+        byte_for_byte_match = False
+
+    # Rule 1: Every 64-hex string anywhere in the report must appear in build_manifest()
+    all_hex64_in_report = [h.lower() for h in _HEX64_RE.findall(report_md)]
+    unknown_hex64 = [h for h in all_hex64_in_report if h not in valid_hashes]
+    all_hex64_valid = len(unknown_hex64) == 0
+
+    errors: list[str] = []
+    if not has_manifest_block:
+        errors.append("RULE_3_FAIL: Report is missing the required Run manifest stamp block.")
+    elif not byte_for_byte_match:
+        errors.append(
+            "RULE_2_FAIL: Manifest block in report does not match build_manifest() byte for byte."
+        )
+    if not all_hex64_valid:
+        errors.append(
+            f"RULE_1_FAIL: Report contains 64-hex string(s) not present in build_manifest(): {unknown_hex64}"
+        )
+
+    return {
+        "passed": has_manifest_block and byte_for_byte_match and all_hex64_valid,
+        "has_manifest_block": has_manifest_block,
+        "byte_for_byte_match": byte_for_byte_match,
+        "all_64hex_in_manifest": all_hex64_valid,
+        "unknown_64hex_strings": unknown_hex64,
+        "errors": errors,
+    }
+
+
+def evaluate_agent_run(
+    tool_log: list[dict[str, Any]],
+    saved_report_path: Path | str | None = None,
+) -> dict[str, Any]:
+    """
+    Agent eval asserting that `save_report` is the final tool call and that a saved report
+    exists on disk (treating a run with no saved report or skipped `save_report` call as a failure).
+    """
+    errors: list[str] = []
+    if not tool_log:
+        errors.append("AGENT_EVAL_FAIL: Tool call log is empty.")
+        final_tool = None
+    else:
+        final_tool = tool_log[-1].get("tool_name")
+        if final_tool != "save_report":
+            errors.append(
+                f"AGENT_EVAL_FAIL: Expected 'save_report' as the final tool call, got '{final_tool}'."
+            )
+
+    report_exists = False
+    if saved_report_path is not None:
+        p = Path(saved_report_path)
+        report_exists = p.exists() and p.stat().st_size > 0
+        if not report_exists:
+            errors.append(f"AGENT_EVAL_FAIL: Saved report missing or empty at '{p}'.")
+    else:
+        errors.append("AGENT_EVAL_FAIL: No saved_report_path provided.")
+
+    return {
+        "passed": len(errors) == 0,
+        "final_tool_call": final_tool,
+        "saved_report_exists": report_exists,
+        "errors": errors,
+    }
+
+
+# ============================================================================
 # STEP 2: DETERMINISTIC COVERAGE CHECK (Regex + Allow-List, No LLM)
 # ============================================================================
 def load_coverage_allowlist(path: Path = ALLOWLIST_PATH) -> dict[str, Any]:
@@ -558,22 +653,21 @@ def load_coverage_allowlist(path: Path = ALLOWLIST_PATH) -> dict[str, Any]:
         return json.load(f)
 
 
+def _strip_manifest_sections(report_md: str, allowlist: dict[str, Any]) -> str:
+    cleaned_md = report_md
+    for sec_header in allowlist.get("ignore_sections", []):
+        if sec_header in cleaned_md:
+            cleaned_md = cleaned_md.split(sec_header, 1)[0]
+    return cleaned_md
+
+
 def check_coverage(
     report_md: str,
     claims: list[ExtractedClaim],
     allowlist_path: Path = ALLOWLIST_PATH,
 ) -> dict[str, Any]:
-    """
-    Splits report_md into candidate lines/sentences, strips allow-listed tokens/headers,
-    and checks that every remaining sentence containing a number or statistical claim
-    is covered by at least one extracted claim.
-    """
     allowlist = load_coverage_allowlist(allowlist_path)
-
-    cleaned_md = report_md
-    for sec_header in allowlist.get("ignore_sections", []):
-        if sec_header in cleaned_md:
-            cleaned_md = cleaned_md.split(sec_header, 1)[0]
+    cleaned_md = _strip_manifest_sections(report_md, allowlist)
 
     ignore_regexes = [re.compile(pat) for pat in allowlist.get("ignore_line_regexes", [])]
     allowed_tokens = allowlist.get("allowed_unclaimed_tokens", [])
@@ -636,12 +730,8 @@ def check_coverage(
 def extract_claims_deterministic_fallback(
     report_md: str, tool_outputs: dict
 ) -> list[ExtractedClaim]:
-    """
-    Deterministic regex/rule-based claim extractor used when ANTHROPIC_API_KEY is absent
-    (e.g. offline CI/pytest) or as a backup if the API is unreachable.
-    Strictly extracts spans and maps them to paths without judging truth.
-    """
-    cleaned_md = report_md.split("### Cryptographic Run Manifest Stamp", 1)[0]
+    allowlist = load_coverage_allowlist(ALLOWLIST_PATH)
+    cleaned_md = _strip_manifest_sections(report_md, allowlist)
     claims: list[ExtractedClaim] = []
     cid = 1
 
@@ -672,7 +762,6 @@ def extract_claims_deterministic_fallback(
         if not line or line.startswith("#") or line.startswith("---"):
             continue
 
-        # 1. Health & Reconciliation claims
         m_status = re.search(r"\*\*Status:\*\*\s*`([^`]+)`", line)
         if m_status:
             _add("value", m_status.group(0), line, m_status.group(1), ["health.status"])
@@ -699,7 +788,6 @@ def extract_claims_deterministic_fallback(
             if m:
                 _add("value", m.group(0), line, m.group(1), [path])
 
-        # 2. Churn & CI claims
         m_churn = re.search(r"\*\*90-Day Inferred Churn Rate:\*\*\s*`([\d\.]+%)`", line)
         if m_churn:
             _add(
@@ -763,7 +851,6 @@ def extract_claims_deterministic_fallback(
                 ["churn_summary.inter_purchase_gap_distribution_days.p75"],
             )
 
-        # 3. At-Risk claims
         m_ar_cnt = re.search(r"\*\*At-Risk Population:\*\*\s*`([\d,]+)`\s*repeat customers", line)
         if m_ar_cnt:
             _add(
@@ -784,7 +871,6 @@ def extract_claims_deterministic_fallback(
                 ["at_risk_summary.total_at_risk_lifetime_revenue"],
             )
 
-        # 4. Shopify claims
         m_shop_tot = re.search(r"`(\d+)`\s*total contracts", line)
         if m_shop_tot:
             _add(
@@ -825,7 +911,6 @@ def extract_claims_deterministic_fallback(
                 ["shopify_health.checks[1].failing_count"],
             )
 
-        # 5. Methodological / causal / significance claims per individual sentence
         for sent in [s.strip() for s in re.split(r"(?<=[.!?])\s+", line) if s.strip()]:
             for pat, _, _ in METHOD_RULES:
                 if re.search(pat, sent, re.IGNORECASE):
@@ -841,12 +926,6 @@ def extract_claims(
     tool_outputs: dict,
     use_llm: bool = True,
 ) -> list[ExtractedClaim]:
-    """
-    Extracts structured claims from `report_md` referencing paths in `tool_outputs`.
-    Uses Anthropic structured outputs (`messages.parse` / `output_config`) at `temperature=0.0`
-    with a pinned model when `ANTHROPIC_API_KEY` is configured and `use_llm=True`;
-    otherwise falls back to `extract_claims_deterministic_fallback`.
-    """
     api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
     if not use_llm or not api_key or api_key.startswith("sk-ant-..."):
         return extract_claims_deterministic_fallback(report_md, tool_outputs)
@@ -855,7 +934,8 @@ def extract_claims(
         from anthropic import Anthropic
 
         client = Anthropic(api_key=api_key)
-        cleaned_report = report_md.split("### Cryptographic Run Manifest Stamp", 1)[0]
+        allowlist = load_coverage_allowlist(ALLOWLIST_PATH)
+        cleaned_report = _strip_manifest_sections(report_md, allowlist)
         user_prompt = (
             "Extract every numeric, statistical, interval, difference, and methodological claim "
             "from the REPORT MARKDOWN below and map each number to its exact path in TOOL OUTPUTS.\n\n"
@@ -908,11 +988,12 @@ def extract_claims(
 
 
 # ============================================================================
-# STEP 4: GRADER & PIPELINE GATE
+# STEP 4: GRADER & PIPELINE GATE (Claims + Coverage + 3 Manifest Rules)
 # ============================================================================
 def grade_report(
     report_md: str,
     tool_outputs: dict,
+    expected_manifest: dict | None = None,
     claims: list[ExtractedClaim] | None = None,
     use_llm_extractor: bool = True,
     min_coverage_recall: float = 1.0,
@@ -920,11 +1001,13 @@ def grade_report(
     allowlist_path: Path = ALLOWLIST_PATH,
 ) -> dict[str, Any]:
     """
-    Runs the full 4-step Claim Checker pipeline:
+    Runs the full Claim & Manifest Checker pipeline:
       1. Extract claims -> list[ExtractedClaim]
       2. Coverage check -> verify every numeric/statistical sentence is claimed
       3. Verify claims -> run VERIFIER_REGISTRY + METHOD_RULES on each claim
-      4. Grade against thresholds -> gate the report
+      4. Verify manifest rules -> (a) every 64-hex string is in build_manifest(),
+         (b) manifest block equals build_manifest() byte-for-byte, (c) missing manifest block fails
+      5. Grade against thresholds -> gate the report
     """
     extracted = (
         claims
@@ -933,6 +1016,7 @@ def grade_report(
     )
     coverage = check_coverage(report_md, extracted, allowlist_path=allowlist_path)
     verifications = [verify_single_claim(c, tool_outputs) for c in extracted]
+    manifest_check = verify_manifest_rules(report_md, expected_manifest=expected_manifest)
 
     pass_count = sum(1 for v in verifications if v["verdict"] == "PASS")
     fail_count = sum(1 for v in verifications if v["verdict"] == "FAIL")
@@ -945,16 +1029,29 @@ def grade_report(
     )
 
     failures = [v for v in verifications if v["verdict"] == "FAIL"]
+    for err_msg in manifest_check["errors"]:
+        failures.append(
+            {
+                "claim_id": "MANIFEST_STAMP",
+                "claim_type": "manifest",
+                "verdict": "FAIL",
+                "reason": err_msg,
+            }
+        )
+        fail_count += 1
+
     unverifiables = [v for v in verifications if v["verdict"] == "UNVERIFIABLE"]
 
     passed = (
         fail_count == 0
+        and manifest_check["passed"]
         and coverage["recall"] >= min_coverage_recall
         and unverifiable_count <= max_unverifiable_count
     )
 
     return {
         "passed": passed,
+        "checker_version": CLAIM_CHECKER_VERSION,
         "extractor_model": PINNED_EXTRACTOR_MODEL,
         "rounding_tolerance_rule": ROUNDING_TOLERANCE_RULE,
         "summary": {
@@ -964,13 +1061,14 @@ def grade_report(
             "unverifiable_count": unverifiable_count,
             "method_warning_count": warn_count,
             "coverage_recall": coverage["recall"],
+            "manifest_passed": manifest_check["passed"],
             "min_coverage_recall_threshold": min_coverage_recall,
             "max_unverifiable_threshold": max_unverifiable_count,
         },
+        "manifest_check": manifest_check,
         "coverage": coverage,
         "failures": failures,
         "unverifiables": unverifiables,
         "verifications": verifications,
         "claims": [c.to_dict() for c in extracted],
     }
-

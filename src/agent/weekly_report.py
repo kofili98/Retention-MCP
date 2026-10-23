@@ -10,15 +10,18 @@ except ImportError:
     def load_dotenv(*args, **kwargs):
         return False
 
-from agent.claim_checker import grade_report
+from agent.claim_checker import evaluate_agent_run, grade_report
 from server.mcp_server import (
+    MANIFEST_SECTION_HEADING,
     get_at_risk_customers,
     get_churn_summary,
     get_cohort_retention,
     get_run_manifest,
     run_data_health_check,
+    save_report,
     shopify_data_health_check,
     shopify_subscription_snapshot,
+    strip_model_manifest,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -31,7 +34,7 @@ TOOL_LOG_PATH = REPORTS_DIR / "weekly_report_tool_log.json"
 CLAIMS_JSON_PATH = REPORTS_DIR / "claims.json"
 CLAIM_GRADE_PATH = REPORTS_DIR / "claim_check_report.json"
 
-# Strict read-only tool registry
+# Tool registry (read-only analysis tools + save_report finalizer)
 READ_ONLY_TOOLS = {
     "run_data_health_check": run_data_health_check,
     "get_run_manifest": get_run_manifest,
@@ -40,22 +43,38 @@ READ_ONLY_TOOLS = {
     "get_at_risk_customers": get_at_risk_customers,
     "shopify_subscription_snapshot": shopify_subscription_snapshot,
     "shopify_data_health_check": shopify_data_health_check,
+    "save_report": save_report,
 }
 
 
 def execute_logged_tool(name: str, tool_log: list, **kwargs) -> dict:
     if name not in READ_ONLY_TOOLS:
-        raise PermissionError(f"Tool '{name}' is not in the read-only whitelist.")
+        raise PermissionError(f"Tool '{name}' is not in the allowed whitelist.")
     result = READ_ONLY_TOOLS[name](**kwargs)
     tool_log.append(
         {
             "step": len(tool_log) + 1,
             "tool_name": name,
-            "arguments": kwargs,
+            "arguments": {k: ("<report_body>" if k == "body" else v) for k, v in kwargs.items()},
             "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
     )
     return result
+
+
+def append_manifest_in_harness(body: str, manifest: dict) -> str:
+    """
+    For scripted runs: strips any model-written manifest section and appends
+    the canonical `## (f) Run manifest stamp` block in code.
+    """
+    clean_body = strip_model_manifest(body)
+    stamp = json.dumps(manifest, indent=2, sort_keys=True)
+    return f"{clean_body}\n\n{MANIFEST_SECTION_HEADING}\n```json\n{stamp}\n```\n"
+
+
+def _write_lf_text(path: Path, content: str) -> None:
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
 
 
 def _build_deterministic_narrative(
@@ -103,7 +122,7 @@ def _revise_narrative_once(
         revision_prompt = (
             f"Your previous draft of the {report_type_label} failed deterministic claim verification.\n"
             "Fix every arithmetic mismatch, methodological violation, and uncovered sentence listed below "
-            "using ONLY the verified tool outputs.\n\n"
+            "using ONLY the verified tool outputs. Do NOT write a Run manifest section; it is appended in code.\n\n"
             f"PREVIOUS DRAFT:\n{draft_narrative}\n\n"
             f"CLAIM VERIFICATION FAILURES:\n{json.dumps(grade_result['failures'], indent=2)}\n\n"
             f"UNCOVERED SENTENCES:\n{json.dumps(grade_result['coverage']['uncovered_sentences'], indent=2)}\n\n"
@@ -127,7 +146,7 @@ def _revise_narrative_once(
 
 
 def generate_weekly_report(
-    use_fixture: bool = True,
+    use_fixture: bool = False,
     draft_override_fn: Callable[[dict], str] | None = None,
     revision_override_fn: Callable[[str, dict, dict], str] | None = None,
 ) -> dict:
@@ -143,8 +162,7 @@ def generate_weekly_report(
             "# CRITICAL DATA HEALTH FAILURE — REPORT ABORTED\n\n"
             f"Health check failed reconciliation: `{json.dumps(health['reconciliation'])}`"
         )
-        with open(REPORT_MD_PATH, "w", encoding="utf-8") as f:
-            f.write(abort_msg)
+        _write_lf_text(REPORT_MD_PATH, abort_msg)
         return {"status": "ABORTED_HEALTH", "passed": False}
 
     # 2. Fixed Execution Sequence: Churn -> Cohort Retention -> At-Risk -> Shopify
@@ -160,8 +178,8 @@ def generate_weekly_report(
         "shopify_data_health_check", tool_log, use_fixture=use_fixture
     )
 
-    with open(TOOL_LOG_PATH, "w", encoding="utf-8") as f:
-        json.dump(tool_log, f, indent=2)
+    # Save 7-step read-only tool call log (preserved for phase8 compatibility)
+    _write_lf_text(TOOL_LOG_PATH, json.dumps(tool_log, indent=2) + "\n")
 
     evidence_bundle = {
         "health": health,
@@ -183,10 +201,6 @@ def generate_weekly_report(
         if is_live_shopify
         else "# Reproducible Retention Report"
     )
-    manifest_stamp = (
-        "\n\n---\n### Cryptographic Run Manifest Stamp\n"
-        f"```json\n{json.dumps(manifest, indent=2)}\n```\n"
-    )
 
     api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
     if draft_override_fn is not None:
@@ -203,7 +217,8 @@ def generate_weekly_report(
             "2. Report the inferred churn numbers across the sensitivity table with 95% CIs and right-censoring caveats.\n"
             "3. Compare Wholesale_Proxy vs Retail_Proxy retention and explicitly state when the data does not support a causal conclusion.\n"
             "4. Propose ONE testable experiment as a formal hypothesis with a named primary metric and control group targeting the At-Risk cohort.\n"
-            "5. Summarize the isolated Shopify subscription health findings without comparing or merging them with the UCI dataset.\n\n"
+            "5. Summarize the isolated Shopify subscription health findings without comparing or merging them with the UCI dataset.\n"
+            "6. Do NOT write or transcribe a Run manifest section; the server/harness appends it in code.\n\n"
             f"VERIFIED TOOL OUTPUTS:\n{json.dumps(evidence_bundle, indent=2)}"
         )
         msg = client.messages.create(
@@ -218,11 +233,14 @@ def generate_weekly_report(
             health, churn_90, at_risk, shopify_snap, shopify_health
         )
 
-    full_report_v1 = f"{report_title}\n\n{narrative_v1}{manifest_stamp}"
+    # Refresh manifest so Shopify query provenance from step 2 is captured, then append in code
+    manifest = get_run_manifest()
+    body_v1 = f"{report_title}\n\n{strip_model_manifest(narrative_v1)}"
+    full_report_v1 = append_manifest_in_harness(body_v1, manifest)
 
-    # 3. Claim Checker Gate (Pass 1)
-    grade_v1 = grade_report(full_report_v1, evidence_bundle)
-    (REPORTS_DIR / "weekly_retention_report_v1.md").write_text(full_report_v1, encoding="utf-8")
+    # 3. Claim & Manifest Checker Gate (Pass 1)
+    grade_v1 = grade_report(full_report_v1, evidence_bundle, expected_manifest=manifest)
+    _write_lf_text(REPORTS_DIR / "weekly_retention_report_v1.md", full_report_v1)
 
     audit_log = {
         "attempt_1": {
@@ -234,7 +252,7 @@ def generate_weekly_report(
         "revision_triggered": False,
         "final_passed": grade_v1["passed"],
     }
-    final_report_md = full_report_v1
+    final_body = body_v1
     final_grade = grade_v1
 
     # 4. Single Revision Pass if Attempt 1 Fails
@@ -246,10 +264,11 @@ def generate_weekly_report(
             narrative_v2 = _revise_narrative_once(
                 narrative_v1, grade_v1, evidence_bundle, report_type_label, api_key
             )
-        full_report_v2 = f"{report_title}\n\n{narrative_v2}{manifest_stamp}"
-        (REPORTS_DIR / "weekly_retention_report_v2.md").write_text(full_report_v2, encoding="utf-8")
+        body_v2 = f"{report_title}\n\n{strip_model_manifest(narrative_v2)}"
+        full_report_v2 = append_manifest_in_harness(body_v2, manifest)
+        _write_lf_text(REPORTS_DIR / "weekly_retention_report_v2.md", full_report_v2)
 
-        grade_v2 = grade_report(full_report_v2, evidence_bundle)
+        grade_v2 = grade_report(full_report_v2, evidence_bundle, expected_manifest=manifest)
         audit_log["attempt_2"] = {
             "passed": grade_v2["passed"],
             "summary": grade_v2["summary"],
@@ -257,29 +276,45 @@ def generate_weekly_report(
             "uncovered_sentences": grade_v2["coverage"]["uncovered_sentences"],
         }
         audit_log["final_passed"] = grade_v2["passed"]
-        final_report_md = full_report_v2
+        final_body = body_v2
         final_grade = grade_v2
 
-    CLAIMS_JSON_PATH.write_text(
-        json.dumps({"claims": final_grade["claims"]}, indent=2), encoding="utf-8"
-    )
-    CLAIM_GRADE_PATH.write_text(
-        json.dumps({**audit_log, "final_verification": final_grade}, indent=2),
-        encoding="utf-8",
+    _write_lf_text(
+        CLAIMS_JSON_PATH, json.dumps({"claims": final_grade["claims"]}, indent=2) + "\n"
     )
 
     if not final_grade["passed"]:
+        _write_lf_text(
+            CLAIM_GRADE_PATH,
+            json.dumps({**audit_log, "final_verification": final_grade}, indent=2) + "\n",
+        )
         gate_msg = (
             "# CLAIM VERIFICATION GATE FAILURE — REPORT BLOCKED\n\n"
             f"Report failed deterministic claim verification after revision pass: "
             f"`{json.dumps(final_grade['failures'])}`\n"
         )
-        REPORT_MD_PATH.write_text(gate_msg, encoding="utf-8")
+        _write_lf_text(REPORT_MD_PATH, gate_msg)
         return {"status": "BLOCKED_BY_CLAIM_GATE", "passed": False, "audit": audit_log}
 
-    REPORT_MD_PATH.write_text(final_report_md, encoding="utf-8")
-    print(f"Verified report written to {REPORT_MD_PATH}")
-    return {"status": "PUBLISHED", "passed": True, "audit": audit_log}
+    # 5. Finalize & Save via `save_report` tool and run Agent Eval
+    agent_call_log = list(tool_log)
+    save_res = execute_logged_tool("save_report", agent_call_log, body=final_body)
+    agent_eval = evaluate_agent_run(agent_call_log, saved_report_path=save_res["path"])
+    audit_log["agent_eval"] = agent_eval
+    audit_log["saved_report"] = save_res
+
+    _write_lf_text(
+        CLAIM_GRADE_PATH,
+        json.dumps({**audit_log, "final_verification": final_grade}, indent=2) + "\n",
+    )
+
+    print(f"Verified report written to {save_res['path']} and {REPORT_MD_PATH}")
+    return {
+        "status": "PUBLISHED",
+        "passed": True and agent_eval["passed"],
+        "save_result": save_res,
+        "audit": audit_log,
+    }
 
 
 if __name__ == "__main__":

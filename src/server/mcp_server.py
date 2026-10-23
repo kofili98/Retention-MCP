@@ -1,19 +1,38 @@
-from pathlib import Path
-from shopify.client import ShopifyDevClient
+import datetime
+import hashlib
 import json
+import re
+from pathlib import Path
 
 try:
     from mcp.server.mcpserver import MCPServer
 except ImportError:
-    from mcp.server.fastmcp import FastMCP as MCPServer
+    try:
+        from mcp.server.fastmcp import FastMCP as MCPServer
+    except ImportError:
+        class MCPServer:  # Minimal shim when running unit tests without mcp installed
+            def __init__(self, name: str):
+                self.name = name
+
+            def tool(self):
+                def decorator(fn):
+                    return fn
+                return decorator
+
+            def run(self):
+                pass
+
+from analysis.manifest import build_manifest
 from shopify.tools import get_shopify_snapshot_data, get_shopify_health_data
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROCESSED_DIR = REPO_ROOT / "data" / "processed"
+REPORTS_DIR = REPO_ROOT / "reports"
+LATEST_REPORT_PATH = REPORTS_DIR / "weekly_retention_report.md"
 
-mcp = MCPServer(
-    "Reproducible-Retention-Server"
-)
+MANIFEST_SECTION_HEADING = "## (f) Run manifest stamp"
+
+mcp = MCPServer("Reproducible-Retention-Server")
 
 
 def _read_artifact(filename: str) -> dict:
@@ -24,6 +43,28 @@ def _read_artifact(filename: str) -> dict:
         )
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def strip_model_manifest(body: str) -> str:
+    """
+    Removes any model-written manifest section (such as `## (f) Run manifest stamp`
+    or `### Cryptographic Run Manifest Stamp`) from the end of `body` so the model
+    never types or transcribes hashes itself.
+    """
+    pattern = re.compile(
+        r"(?:\n+---\s*)?\n*(?:#{2,3}\s*(?:\(f\)\s*)?(?:Cryptographic\s+)?Run\s+manifest\s+stamp\b).*$",
+        re.IGNORECASE | re.DOTALL,
+    )
+    cleaned = pattern.sub("", body.strip())
+    return cleaned.rstrip()
+
+
+def _write_lf(path: Path, text: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+    return path
+
 
 def _add_months(ym: str, n: int) -> str:
     year, month = map(int, ym.split("-"))
@@ -204,6 +245,7 @@ def get_at_risk_customers(limit: int = 25) -> dict:
         "top_at_risk_customers": top_customers,
     }
 
+
 @mcp.tool()
 def run_data_health_check() -> dict:
     """
@@ -246,15 +288,14 @@ def run_data_health_check() -> dict:
     return report
 
 
-#@mcm.tool() if False else None # placeholder safety
-
 @mcp.tool()
 def get_run_manifest() -> dict:
     """
-    Returns cryptographic provenance for the analysis: raw dataset SHA-256, output artifact hashes,
-    git commit hash, Python version, and pinned package versions. Call this to verify trust.
+    Builds and returns fresh cryptographic provenance for the analysis: raw dataset SHA-256,
+    output artifact hashes, git commit & dirty-tree flag, lockfile hash, agent model ID,
+    checker version, run timestamp, and Shopify response hash & query timestamp.
     """
-    return _read_artifact("run_manifest.json")
+    return build_manifest()
 
 
 @mcp.tool()
@@ -273,6 +314,26 @@ def shopify_data_health_check(use_fixture: bool = False) -> dict:
     a backing contract ID and ACTIVE contracts missing a nextBillingDate.
     """
     return get_shopify_health_data(use_fixture=use_fixture)
+
+
+@mcp.tool()
+def save_report(body: str) -> dict:
+    """Finalize and save the report. Call last. Appends the run manifest."""
+    clean_body = strip_model_manifest(body)
+    manifest = build_manifest()
+    stamp = json.dumps(manifest, indent=2, sort_keys=True)
+    full_text = f"{clean_body}\n\n{MANIFEST_SECTION_HEADING}\n```json\n{stamp}\n```\n"
+
+    date_slug = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    dated_path = _write_lf(REPORTS_DIR / f"{date_slug}.md", full_text)
+    _write_lf(LATEST_REPORT_PATH, full_text)
+
+    manifest_sha256 = hashlib.sha256(stamp.encode("utf-8")).hexdigest()
+    return {
+        "path": str(dated_path),
+        "latest_path": str(LATEST_REPORT_PATH),
+        "manifest_sha256": manifest_sha256,
+    }
 
 
 if __name__ == "__main__":
